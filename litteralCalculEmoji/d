@@ -1,0 +1,438 @@
+<script>
+  const geo = document.getElementById("geo");
+  const figure = document.getElementById("figure");
+  const formeSelect = document.getElementById("forme");
+  const paramsDiv = document.getElementById("params");
+  const shuffleBtn = document.getElementById("shuffleBtn");
+  const modeZone = document.getElementById("modeZone");
+  const questionDiv = document.getElementById("question");
+  const reponseInput = document.getElementById("reponse");
+  const validerBtn = document.getElementById("validerBtn");
+  const feedbackDiv = document.getElementById("feedback");
+  const toggleQBtn = document.getElementById("toggleQBtn");
+  const questionBlock = document.getElementById("questionBlock");
+
+  const themes = [
+    ["🍓","🍌","🍇","🍑"],
+    ["🐸","🦄","🐲","🦖"],
+    ["⚽️","🏀","🏈","🥎"],
+    ["💙","💚","💜","🖤"],
+    ["🍩","🍪","🍭","🍦"],
+    ["🐶","🐱","🐭","🐻"],
+    ["🐼","🐨","🐵","🦊"],
+    ["🚗","🏍️","🚁","🚀"]
+  ];
+
+  let currentEmojiMap = { "a": "🍓" };
+  let targetType = "a";
+  let targetCount = 0;
+  let currentThemeIndex = 0;
+  let currentParams = {};
+
+  // 🔄 Choisir un thème
+  function pickTheme(index) {
+    currentThemeIndex = index % themes.length;
+    return themes[currentThemeIndex].slice(); // copie
+  }
+
+  // 🔄 Appliquer un thème donné aux types
+  function applyThemeToTypes(types) {
+    const theme = pickTheme(currentThemeIndex);
+    const shuffled = theme.slice().sort(() => Math.random() - 0.5);
+    const newMap = {};
+    types.forEach((t,i) => {
+      newMap[t] = shuffled[i % shuffled.length];
+    });
+    currentEmojiMap = newMap;
+  }
+
+  // 🔄 Shuffle garanti différent
+  function shuffleCurrentTheme(types) {
+    const theme = pickTheme(currentThemeIndex);
+    let newMap;
+    do {
+      const shuffled = theme.slice().sort(() => Math.random() - 0.5);
+      newMap = {};
+      types.forEach((t,i) => {
+        newMap[t] = shuffled[i % shuffled.length];
+      });
+    } while (JSON.stringify(newMap) === JSON.stringify(currentEmojiMap));
+    currentEmojiMap = newMap;
+  }
+
+class Figure {
+  constructor(label, params, types) {
+    this.label = label;
+    this.params = { ...params };
+    this.types = types;
+  }
+  typeFn(row,col,p) { return "fond"; }
+
+  // Par défaut : carré m × n (ou m × m si n absent)
+  getSize(p) {
+    const m = parseInt(p.m || p.c);
+    const n = p.n ? parseInt(p.n) : m;
+    return { m, n };
+  }
+}
+
+
+    class Carre extends Figure {
+      constructor() { super("Carré", { m:{min:3,max:40,value:5} }, ["a"]); }
+      typeFn(row,col,p) { return "a"; }
+    }
+
+    class Rectangle extends Figure {
+      constructor() { super("Rectangle", { m:{min:1,max:40,value:5}, n:{min:1,max:40,value:8} }, ["a"]); }
+      typeFn(row,col,p) { return "a"; }
+    }
+
+    class Damier extends Figure {
+      constructor() { super("Damier", { m:{min:2,max:40,value:8}, n:{min:2,max:40,value:8} }, ["a","b"]); }
+      typeFn(row,col,p) { return (row+col)%2 ? "a":"b"; }
+    }
+
+    class CarreBordure extends Figure {
+      constructor() { super("Carré bordure", { m:{min:3,max:40,value:7}, b:{min:1,max:10,value:2} }, ["a","b"]); }
+      typeFn(row,col,p) {
+        return (row<p.b || row>=p.m-p.b || col<p.b || col>=p.m-p.b) ? "a":"b";
+      }
+    }
+
+class TriangleDiagonal extends Figure {
+  constructor() { 
+    super("Triangle diagonal", { c:{min:2,max:40,value:6} }, ["a","b","c"]); 
+  }
+  typeFn(row,col,p) {
+    if (col === row) return "a";   // diagonale
+    if (col < row) return "b";     // en dessous
+    return "c";                    // au-dessus
+  }
+}
+
+    class XFigure extends Figure {
+      constructor() { super("X", { c:{min:3,max:39,value:7} }, ["a","b"]); }
+      typeFn(row,col,p) {
+        if (row === col || row + col === p.c - 1) return "a";
+        return "b";
+      }
+    }
+
+class DoubleDistributivite extends Figure {
+  constructor() {
+    super("Double distributivité", {
+      a:{min:1,max:30,value:10}, 
+      b:{min:1,max:10,value:3},
+      c:{min:1,max:30,value:10},
+      d:{min:1,max:10,value:5}
+    }, ["ac","ad","bc","bd"]);
+  }
+
+  getSize(p) {
+    return { m: p.a + p.b, n: p.c + p.d };
+  }
+
+  typeFn(row,col,p) {
+    const isA = row < p.a;
+    const isC = col < p.c;
+    if (isA && isC) return "ac";
+    if (isA && !isC) return "ad";
+    if (!isA && isC) return "bc";
+    return "bd";
+  }
+}
+
+class IRCarre extends Figure {
+  constructor() {
+    super("Identité remarquable : (a+b)²", {
+      a:{min:1,max:30,value:10}, 
+      b:{min:1,max:10,value:3}
+    }, ["aa","ab","bb"]);
+  }
+
+  // Taille de la grille : (a+b) × (a+b)
+  getSize(p) {
+    return { m: p.a + p.b, n: p.a + p.b };
+  }
+
+  typeFn(row,col,p) {
+    const isArow = row < p.a;
+    const isAcol = col < p.a;
+
+    if (isArow && isAcol) return "aa";   // bloc a × a
+    if (!isArow && !isAcol) return "bb"; // bloc b × b
+    return "ab";                         // les rectangles croisés
+  }
+}
+
+
+const figureRegistry = {
+  carre: new Carre(),
+  rectangle: new Rectangle(),
+  damier: new Damier(),
+  carreBordure: new CarreBordure(),
+  triangleDiagonal: new TriangleDiagonal(),
+  x: new XFigure(),
+  doubleDistributivite: new DoubleDistributivite(),
+  irCarre: new IRCarre()
+};
+
+
+
+function createCell(type, cellSize, params) {
+  const cell = document.createElement("div");
+  cell.className = `cell type-${type}`;
+  cell.style.width = cellSize + "px";
+  cell.style.height = cellSize + "px";
+  cell.style.lineHeight = cellSize + "px";
+  cell.style.fontSize = (cellSize * 0.75) + "px";
+  cell.textContent = currentEmojiMap[type] || "";
+
+  // ✅ appliquer le style fantôme si bouton désactivé
+  const btn = document.querySelector(`#modeZone button[data-type="${type}"]`);
+  if (btn && btn.dataset.active === "0") {
+    cell.classList.add("ghost");
+  }
+
+  return cell;
+}
+
+
+
+function getCellContent(type, params) {
+  if (type === "fond") return "";
+  const btn = document.querySelector(`#modeZone button[data-type="${type}"]`);
+  if (btn && btn.dataset.active === "0") return ""; // masqué
+  return currentEmojiMap[type] || "";
+}
+
+
+function compterEmoji(figName, params) {
+  const fig = figureRegistry[figName];
+  const { m, n } = fig.getSize(params);   // ✅ prend la bonne taille
+  const counts = {};
+  for (let row=0; row<m; row++) {
+    for (let col=0; col<n; col++) {
+      const t = fig.typeFn(row,col,params);
+      if (getCellContent(t, params) !== "") {
+        counts[t] = (counts[t] || 0) + 1;
+      }
+    }
+  }
+  return counts;
+}
+
+
+function poserQuestion(figName, params){
+  const counts = compterEmoji(figName, params);
+
+  // ✅ somme uniquement des emojis visibles (non fantômes)
+  const total = Object.values(counts).reduce((a,b)=>a+b,0);
+
+  targetType = "total";
+  targetCount = total;
+  questionDiv.textContent = `Combien d’emojis visibles au total ?`;
+  feedbackDiv.textContent="";
+  reponseInput.value="";
+}
+
+
+
+function dessinerFigure(figName, params) {
+  const fig = figureRegistry[figName];
+  const { m, n } = fig.getSize(params);
+
+  figure.innerHTML = "";
+  figure.style.gridTemplateColumns = `repeat(${n},1fr)`;
+  figure.style.gridTemplateRows = `repeat(${m},1fr)`;
+
+  const zoneW = geo.clientWidth - 30;
+  const zoneH = geo.clientHeight - 30;
+  const cellSize = Math.min(zoneW/n, zoneH/m);
+  figure.style.width = (cellSize*n)+"px";
+  figure.style.height = (cellSize*m)+"px";
+
+  for (let row=0; row<m; row++) {
+    for (let col=0; col<n; col++) {
+      const t = fig.typeFn(row,col,params);
+      const cell = createCell(t, cellSize, params);
+      figure.appendChild(cell);
+    }
+  }
+  poserQuestion(figName, params);
+  currentParams = { ...params };  // ✅ mémorise les valeurs actuelles
+
+  return fig.types;
+}
+
+
+function buildParamsUI(figName) {
+  paramsDiv.innerHTML = "";
+  modeZone.innerHTML = "";
+
+  const fig = figureRegistry[figName];
+
+  // ✅ on n’appelle plus applyThemeToTypes ici
+  // on se contente d’utiliser currentEmojiMap déjà existant
+
+  // --- Boutons emoji ---
+  fig.types.forEach(t => {
+    const btn = document.createElement("button");
+    btn.textContent = currentEmojiMap[t] || "❓"; // au cas où
+    btn.dataset.type = t;
+    btn.classList.add("emoji-toggle");
+    btn.dataset.active = "1"; // actif par défaut
+    btn.addEventListener("click", () => {
+      btn.dataset.active = btn.dataset.active === "1" ? "0" : "1";
+      btn.style.opacity = btn.dataset.active === "1" ? "1" : "0.4";
+      update();
+    });
+    modeZone.appendChild(btn);
+  });
+
+  // --- Paramètres numériques ---
+  const inputs = {};
+  const container = document.createElement("div");
+  container.className = "param-container";
+  for (const [key,cfg] of Object.entries(fig.params)) {
+    const item = document.createElement("div");
+    item.className = "param-item";
+
+    const label = document.createElement("label");
+    label.textContent = key + ":";
+
+    const input = document.createElement("input");
+    input.type = "number";
+    input.min = cfg.min;
+    input.max = cfg.max;
+    input.value = (currentParams[key] !== undefined) 
+      ? currentParams[key] 
+      : cfg.value;
+
+    inputs[key] = input;
+    item.appendChild(label);
+    item.appendChild(input);
+    container.appendChild(item);
+  }
+  if (container.children.length > 0) paramsDiv.appendChild(container);
+
+  // --- Update ---
+  function update() {
+    const values = {};
+    for (const [k,inp] of Object.entries(inputs)) {
+      values[k] = parseInt(inp.value);
+    }
+    dessinerFigure(figName, values);
+  }
+  for (const [k,inp] of Object.entries(inputs)) {
+    inp.addEventListener("input", update);
+  }
+
+  update();
+}
+
+
+
+
+
+    for (const [name,fig] of Object.entries(figureRegistry)) {
+      const opt=document.createElement("option");
+      opt.value=name;
+      opt.textContent=fig.label;
+      formeSelect.appendChild(opt);
+    }
+
+    formeSelect.addEventListener("change",()=>buildParamsUI(formeSelect.value));
+
+// 🔄 Choisir un thème
+function pickTheme(index) {
+  currentThemeIndex = index % themes.length;
+  return themes[currentThemeIndex].slice(); // copie
+}
+
+// 🔄 Appliquer le thème + garantir un vrai shuffle
+function applyThemeToTypes(types, forceShuffle = false) {
+  const theme = pickTheme(currentThemeIndex).slice();
+
+  // ordre actuel des emojis selon les types
+  const currentSeq = types.map(t => currentEmojiMap[t] || "");
+
+  let emojis = theme;
+
+  if (forceShuffle) {
+    let newEmojis;
+    do {
+      newEmojis = theme.slice().sort(() => Math.random() - 0.5);
+    } while (
+      newEmojis.length === currentSeq.length &&
+      newEmojis.every((val, i) => val === currentSeq[i])
+    );
+    emojis = newEmojis;
+  }
+
+  const newMap = {};
+  types.forEach((t, i) => {
+    newMap[t] = emojis[i % emojis.length];
+  });
+  currentEmojiMap = newMap;
+}
+
+
+
+
+  // 🎨 Bouton Thème
+  document.getElementById("themeBtn").addEventListener("click", () => {
+    currentThemeIndex = (currentThemeIndex + 1) % themes.length;
+    const figName = formeSelect.value;
+    const fig = figureRegistry[figName];
+    applyThemeToTypes(fig.types);
+    buildParamsUI(figName);
+    dessinerFigure(figName, currentParams);
+  });
+
+  // 🔀 Bouton Shuffle
+  shuffleBtn.addEventListener("click", () => {
+    const figName = formeSelect.value;
+    const fig = figureRegistry[figName];
+    shuffleCurrentTheme(fig.types);
+    buildParamsUI(figName);
+    dessinerFigure(figName, currentParams);
+  });
+
+  // ✅ Valider la réponse
+  validerBtn.addEventListener("click",()=>{
+    const val=parseInt(reponseInput.value);
+    if(val===targetCount){
+      feedbackDiv.textContent="✅ Bravo !";
+      feedbackDiv.style.color="#0f0";
+    } else {
+      feedbackDiv.textContent=`❌ Faux ! Réponse : ${targetCount}`;
+      feedbackDiv.style.color="#ff0";
+    }
+  });
+
+  reponseInput.addEventListener("keydown",(e)=>{
+    if(e.key==="Enter"){ validerBtn.click(); }
+  });
+
+  // ❓ Toggle Question
+  toggleQBtn.addEventListener("click",()=>{
+    if(questionBlock.style.display==="none"){
+      questionBlock.style.display="block";
+      toggleQBtn.textContent="🔧 Cacher la question";
+    } else {
+      questionBlock.style.display="none";
+      toggleQBtn.textContent="❓ Montrer la question";
+    }
+  });
+
+  // 🔄 Resize
+  function redrawOnResize() {
+    const figName = formeSelect.value;
+    if (!figName || !figureRegistry[figName]) return;
+    dessinerFigure(figName, currentParams);
+  }
+  window.addEventListener("resize", redrawOnResize);
+
+  buildParamsUI("carre");
+</script>

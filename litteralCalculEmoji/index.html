@@ -1,0 +1,1629 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script src="https://unpkg.com/twemoji@14.0.2/dist/twemoji.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  <meta charset="utf-8">
+  <title>Appli élève – Géométrie d’emojis 🍓</title>
+  <style>
+body {
+  margin: 0;
+  font-family: sans-serif;
+  display: flex;
+  align-items: stretch;
+  height: 100vh;
+  background: #fff;
+}
+
+/* Zone figure */
+#geo {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #eef7ff;
+  border: 3px solid #444;
+  border-radius: 20px;
+  margin: 10px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+#plateau {
+  position: absolute;
+  background: transparent;
+  border: none;
+}
+#figure {
+  position: absolute;
+  display: grid;
+  transition: all 0.2s ease-in-out;
+}
+
+
+.cell {
+  display: flex;
+  align-items: center;       /* ✅ centrage vertical */
+  justify-content: center;   /* ✅ centrage horizontal */
+  background: #eef7ff;       /* ✅ même fond que #geo pour masquer les trames */
+  margin: 0;
+  padding: 0;
+  border: none;
+  box-sizing: border-box;
+  line-height: 1;
+        /* ✅ taille relative recalculée en JS */
+  transform: translateZ(0);  /* ✅ force le rendu GPU pour limiter les artefacts */
+  image-rendering: -webkit-optimize-contrast;
+  -webkit-font-smoothing: antialiased;
+}
+
+
+
+.bar {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: #fff;
+  border-radius: 4px;
+}
+.bar.top { height: 6px; }
+.bar.left { width: 4px; }
+.cell.ghost {
+  color: rgba(0,0,0,0.3);
+  filter: grayscale(80%);
+  transition: color 0.3s, filter 0.3s;
+}
+
+/* Zone contrôle */
+#sidebar {
+  width: 320px;
+  background: linear-gradient(160deg, #ff9800, #e53935);
+  color: #fff;
+  padding: 12px;
+  box-sizing: border-box;
+  border: 3px solid #444;
+  border-radius: 20px;
+  margin: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+}
+#sidebar h2 {
+  font-size: 1.2rem;
+  margin: 0 0 8px 0;
+  text-align: center;
+  font-weight: bold;
+}
+.section {
+  background: rgba(255,255,255,0.15);
+  border: 2px solid #fff;
+  border-radius: 10px;
+  padding: 6px;
+  margin-bottom: 8px;
+}
+.section h3 {
+  margin: 0 0 6px 0;
+  font-size: 0.9rem;
+  text-align: center;
+  color: #fff;
+}
+.param-container {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr); /* ✅ 5 colonnes fixes */
+  gap: 6px;
+}
+
+.param-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;      /* ✅ centre le label + input */
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.param-item label {
+  margin-bottom: 2px;
+  font-size: 0.75rem;
+  white-space: nowrap;      /* ✅ évite les retours à la ligne */
+}
+
+.param-item input {
+  font-size: 0.85rem;
+  width: 100%;
+  padding: 3px 0;
+  border-radius: 6px;
+  text-align: center;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+}
+
+input[type="number"], select, button {
+  font-size: 0.8rem;
+  width: 100%;
+  padding: 4px;
+  box-sizing: border-box;
+  text-align: center;
+  border-radius: 6px;
+  border: none;
+  outline: none;
+}
+button {
+  background: #fff;
+  color: #e53935;
+  font-weight: bold;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+}
+button:hover { box-shadow: 0 0 6px rgba(0,0,0,0.3); }
+
+.section.dual {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: none;
+  background: none;
+}
+.shuffleZone {
+  flex: 0 0 25%;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.15);
+  border: 2px solid #fff;
+  border-radius: 10px;
+  padding: 6px;
+}
+.shuffleZone button {
+  width: 36px; height: 36px; font-size: 1.1rem;
+  line-height: 1; padding: 0; text-align: center;
+}
+#modeZone {
+  flex: 1 1 50%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.15);
+  border: 2px solid #fff;
+  border-radius: 10px;
+  padding: 6px;
+  box-sizing: border-box;
+  min-width: 0;
+}
+#modeZone button.emoji-toggle {
+  flex: 0 0 auto;
+  width: 36px; height: 36px; font-size: 1.2rem;
+  line-height: 1; padding: 0; border: 2px solid #fff;
+  background: #fff; color: #000; text-align: center;
+}
+#modeZone button.emoji-toggle[data-active="0"] { opacity: 0.4; }
+
+#toggleQBtn {
+  margin: 4px auto 6px auto;
+  width: 90%;
+  background: #ffd54f;
+  color: #000;
+  font-size: 0.85rem;
+  border-radius: 6px;
+}
+#questionBlock {
+  display: none;
+  background: rgba(0,0,0,0.15);
+  border-radius: 10px;
+  padding: 10px;
+  margin-top: 6px;
+  text-align: center;
+}
+
+#questionBlock h3 {
+  font-size: 1rem;
+  margin: 0 0 8px;
+  text-align: center;
+  font-weight: bold;
+  color: #ffd54f;
+  text-shadow: 1px 1px 2px #000;
+}
+
+#question {
+  text-align: center;
+  font-size: 1rem;
+  margin-bottom: 8px;
+}
+
+/* ✅ Input centré et stable */
+#reponse {
+  display: block;
+  width: 100%;
+  max-width: 260px;
+  margin: 0 auto 10px;
+  font-size: 1rem;
+  height: 42px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 2px solid #fff;
+  text-align: center;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  box-sizing: border-box;
+}
+
+#reponse::placeholder {
+  text-align: center;
+  color: rgba(255,255,255,0.7);
+}
+
+/* ✅ Rendu LaTeX qui remplace parfaitement l’input */
+.reponse-latex {
+  display: block;
+  width: 100%;
+  max-width: 260px;
+  margin: 0 auto 10px;
+  font-size: 1.1rem;
+  padding: 6px 10px;
+  text-align: center;
+  border: 2px solid #fff;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.reponse-latex .close-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #e53935;
+  color: #fff;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  line-height: 20px;
+  text-align: center;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+/* ✅ Feedback toujours centré, stable et sans influence sur l’input */
+#feedback {
+  display: block;
+  width: 100%;
+  max-width: 260px;
+  margin: 0 auto;
+  min-height: 1.4em;     /* garde la place même vide */
+  font-size: 1rem;
+  font-weight: bold;
+  text-align: center;
+  color: #fff;
+  transition: color 0.3s ease, transform 0.2s ease;
+}
+
+#toggleQBtn,
+#literalBtn {
+  height: 36px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#toggleQBtn {
+  background: #ffd54f;
+  color: #000;
+  padding: 0 14px;
+  margin: 0; /* ✅ supprime le centrage automatique */
+}
+
+#literalBtn {
+  background: #fff;
+  color: #e53935;
+  padding: 0 10px;
+  width: auto;
+  margin: 0; /* ✅ alignement horizontal */
+}
+
+#literalBtn[data-active="1"] {
+  background: #ffd54f;
+  color: #000;
+}
+
+.question-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center; /* ✅ aligne verticalement */
+  gap: 8px;
+  margin: 4px 0 6px 0;
+}
+
+
+
+  </style>
+</head>
+<body>
+  <div id="geo"><div id="figure"></div></div>
+  <div id="sidebar">
+
+    <div class="section"><h3>Forme</h3><select id="forme"></select></div>
+    <div class="section"><h3>Paramètres</h3><div id="params"></div></div>
+    <div class="section dual">
+<div class="shuffleZone">
+  <button id="themeBtn">🎭</button>
+  <button id="shuffleBtn">🔀</button>
+  <button id="toggleModeBtn">🎨</button>
+
+</div>
+
+      <div id="modeZone"></div>
+    </div>
+    <div class="question-controls">
+      <button id="literalBtn">🔤</button>
+  <button id="toggleQBtn">❓ Montrer la question</button>
+  
+</div>
+
+    <div id="questionBlock" style="display:none;">
+      <h3>Question élève</h3>
+      <div id="question"></div>
+<input type="text" id="reponse" placeholder="Votre réponse" autocomplete="off">
+      <button id="validerBtn">Valider</button>
+      <div id="feedback"></div>
+    </div>
+  </div>
+
+<script>
+const geo=document.getElementById("geo"),figure=document.getElementById("figure"),
+      formeSelect=document.getElementById("forme"),paramsDiv=document.getElementById("params"),
+      shuffleBtn=document.getElementById("shuffleBtn"),modeZone=document.getElementById("modeZone"),
+      questionDiv=document.getElementById("question"),reponseInput=document.getElementById("reponse"),
+      validerBtn=document.getElementById("validerBtn"),feedbackDiv=document.getElementById("feedback"),
+      toggleQBtn=document.getElementById("toggleQBtn"),questionBlock=document.getElementById("questionBlock");
+
+const MARGIN=40,BAR_THICKNESS=MARGIN/2;
+const BAR_MARGIN = 4; // 🧩 décalage extérieur uniforme pour toutes les barres
+const themes=[["🟥", "🟦", "🟩", "🟨"],["🍓","🍌","🍇","🍑"],["🐸","🦄","🐲","🦖"],["⚽️","🏀","🏈","🥎"],["💙","💚","💜","🖤"],
+              ["🍩","🍪","🍭","🍦"],["🐶","🐱","🐭","🐻"],["🐼","🐨","🐵","🦊"],["🚗","🏍️","🚁","🚀"]];
+let currentEmojiMap={"a":"🍓"},targetCount=0,currentThemeIndex=0,currentParams={};
+
+let useColorMode = false;
+let useLiteralMode = false;
+let refExpr = "";
+
+
+// ⚡️ Mettre true pour forcer Twemoji partout
+const forceTwemoji = true; 
+
+// Détection classique Apple
+const isApple = /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
+
+// Décision finale
+const useTwemoji = forceTwemoji || !isApple;
+
+/* === Figures === */
+class Figure{constructor(label,params,types=["a"]){this.label=label;this.params=params;this.types=types;}
+ getSize(p){return{m:1,n:1};} typeFn(r,c,p){return"a";} getBars(p,cs){return[];}}
+
+class Carre extends Figure {
+  constructor() {
+    super("Carré", { c: { min: 1, max: 20, value: 5 } }, ["a"]);
+  }
+
+  getSize(p) {
+    return { m: p.c, n: p.c };
+  }
+
+  typeFn(r, c, p) {
+    return "a";
+  }
+
+  getBars(p, cs) {
+    return [
+      { side: "top", size: p.c * cs, text: p.c, param: "c", color: "#42a5f5" },
+      { side: "left", size: p.c * cs, text: p.c, param: "c", color: "#ef5350" }
+    ];
+  }
+
+  getLiteralExpressions(p) {
+    return {
+      total: "c*c",
+      parts: { a: "c*c" }
+    };
+  }
+}
+
+class Rectangle extends Figure {
+  constructor() {
+    super(
+      "Rectangle",
+      { a: { min: 1, max: 40, value: 5 }, b: { min: 1, max: 40, value: 8 } },
+      ["a"]
+    );
+  }
+
+  getSize(p) {
+    return { m: p.a, n: p.b };
+  }
+
+  typeFn(r, c, p) {
+    return "a";
+  }
+
+  getBars(p, cs) {
+    return [
+      { side: "top", size: p.b * cs, text: p.b, param: "b", color: "#42a5f5", left: 0 },
+      { side: "left", size: p.a * cs, text: p.a, param: "a", color: "#ef5350", top: 0 }
+    ];
+  }
+
+  getLiteralExpressions(p) {
+    return {
+      total: "a*b",
+      parts: { a: "a*b" }
+    };
+  }
+}
+
+class Damier extends Figure {
+  constructor() {
+    super(
+      "Damier",
+      { a: { min: 2, max: 40, value: 8 }, b: { min: 2, max: 40, value: 8 } },
+      ["a", "b"]
+    );
+  }
+
+  getSize(p) {
+    return { m: p.a, n: p.b };
+  }
+
+  typeFn(r, c, p) {
+    return (r + c) % 2 ? "a" : "b";
+  }
+
+  getBars(p, cs) {
+    return [
+      { side: "top", size: p.b * cs, text: p.b, param: "b", color: "#42a5f5" },
+      { side: "left", size: p.a * cs, text: p.a, param: "a", color: "#ef5350" }
+    ];
+  }
+
+getLiteralExpressions(p) {
+  // 🟩 Damier : alternance, une couleur a une case de plus si a*b est impair
+  const isOdd = (p.a * p.b) % 2 === 1;
+
+  return {
+    total: "a*b",
+    parts: {
+      a: isOdd ? "(a*b + 1)/2" : "a*b/2",
+      b: isOdd ? "(a*b - 1)/2" : "a*b/2"
+    }
+  };
+}
+
+}
+
+class CarreBordure1 extends Figure {
+  constructor() {
+    super(
+      "Carré bordure (1)",
+      { c: { min: 3, max: 40, value: 6 } },
+      ["a", "b"]
+    );
+  }
+
+  getSize(p) {
+    return { m: p.c, n: p.c };
+  }
+
+  typeFn(r, c, p) {
+    // 🔲 Bordure d'épaisseur fixe = 1
+    return (r === 0 || r === p.c - 1 || c === 0 || c === p.c - 1) ? "a" : "b";
+  }
+
+  getBars(p, cs) {
+    return [
+      { side: "top", size: p.c * cs, text: p.c, param: "c", color: "#42a5f5" },
+      { side: "left", size: p.c * cs, text: p.c, param: "c", color: "#ef5350" }
+    ];
+  }
+
+  getLiteralExpressions(p) {
+    return {
+      total: "c*c",
+      parts: {
+        a: "4*(c-1)",
+        b: "(c-2)*(c-2)"
+      }
+    };
+  }
+}
+
+
+class CarreBordure extends Figure {
+  constructor() {
+    super(
+      "Carré bordure",
+      { c: { min: 3, max: 40, value: 7 }, b: { min: 1, max: 10, value: 2 } },
+      ["a", "b"]
+    );
+  }
+
+  getSize(p) {
+    return { m: p.c, n: p.c };
+  }
+
+  typeFn(r, c, p) {
+    // 🟩 La bordure est de type "a", le centre de type "b"
+    return (r < p.b || r >= p.c - p.b || c < p.b || c >= p.c - p.b) ? "a" : "b";
+  }
+
+  getBars(p, cs) {
+    const gridW = p.c * cs;
+    const gridH = p.c * cs;
+    const plateauLeft = MARGIN / 2;
+    const plateauTop = MARGIN / 2;
+
+    const inside = p.b * cs; // distance du bord intérieur
+
+    return [
+      // === BARRES C (dimensions du carré) ===
+      { side: "top",  size: gridW, text: p.c, param: "c", color: "#42a5f5", left: 0, top: 0 }, // haut
+      { side: "left", size: gridH, text: p.c, param: "c", color: "#ef5350", left: 0, top: 0 }, // gauche
+
+      // === BARRES B (épaisseur de bordure) ===
+      // En bas : deux horizontales, bien calées à gauche et droite
+      {
+        side: "top",
+        size: p.b * cs,
+        text: p.b,
+        param: "b",
+        color: "#90caf9",
+        absoluteLeft: plateauLeft,
+        absoluteTop: plateauTop + gridH + 4 // sous la figure
+      },
+      {
+        side: "top",
+        size: p.b * cs,
+        text: p.b,
+        param: "b",
+        color: "#90caf9",
+        absoluteLeft: plateauLeft + gridW - p.b * cs,
+        absoluteTop: plateauTop + gridH + 4
+      },
+
+      // À droite : deux verticales, bien calées en haut et en bas
+      {
+        side: "left",
+        size: p.b * cs,
+        text: p.b,
+        param: "b",
+        color: "#ef9a9a",
+        absoluteLeft: plateauLeft + gridW + 4, // à droite du carré
+        absoluteTop: plateauTop
+      },
+      {
+        side: "left",
+        size: p.b * cs,
+        text: p.b,
+        param: "b",
+        color: "#ef9a9a",
+        absoluteLeft: plateauLeft + gridW + 4,
+        absoluteTop: plateauTop + gridH - p.b * cs
+      }
+    ];
+  }
+
+  adjustParams(p) {
+    const np = { ...p };
+    const maxB = Math.floor((p.c - 1) / 2);
+    if (np.b > maxB) np.b = maxB;
+    return { ...np, _constraints: { b: { min: 1, max: maxB } } };
+  }
+
+  getLiteralExpressions(p) {
+    return {
+      total: "c*c",
+      parts: {
+        a: "4*b*(c-b)",
+        b: "(c-2*b)*(c-2*b)"
+      }
+    };
+  }
+}
+
+
+
+
+class TriangleDiagonal extends Figure {
+  constructor() {
+    super(
+      "Triangle diagonal",
+      { c: { min: 2, max: 40, value: 6 } },
+      ["a", "b", "c"]
+    );
+  }
+
+  getSize(p) {
+    return { m: p.c, n: p.c };
+  }
+
+  typeFn(r, c, p) {
+    if (c === r) return "a";
+    if (c < r) return "b";
+    return "c";
+  }
+
+  getBars(p, cs) {
+    return [
+      { side: "top", size: p.c * cs, text: p.c, param: "c", color: "#42a5f5" },
+      { side: "left", size: p.c * cs, text: p.c, param: "c", color: "#ef5350" }
+    ];
+  }
+
+  getLiteralExpressions(p) {
+    // 🧩 Triangle diagonal : moitié d’un carré de côté c
+    return {
+      total: "c*c",
+      parts: {
+        a: "c",         // la diagonale elle-même (fine ligne)
+        b: "(c*c-c)/2",     // zone sous la diagonale
+        c: "(c*c-c)/2"      // zone au-dessus de la diagonale
+      }
+    };
+  }
+}
+
+class XFigure extends Figure {
+  constructor() {
+    super("Croix (X)", { c: { min: 3, max: 39, value: 7 } }, ["a", "b"]);
+  }
+
+  getSize(p) {
+    return { m: p.c, n: p.c };
+  }
+
+  typeFn(r, c, p) {
+    return (r === c || r + c === p.c - 1) ? "a" : "b";
+  }
+
+  getBars(p, cs) {
+    return [
+      { side: "top", size: p.c * cs, text: p.c, param: "c", color: "#42a5f5" },
+      { side: "left", size: p.c * cs, text: p.c, param: "c", color: "#ef5350" }
+    ];
+  }
+
+  adjustParams(p) {
+    const np = { ...p };
+    if (np.c < 3) np.c = 3;
+    return np;
+  }
+
+  getLiteralExpressions(p) {
+    const crossExpr = (p.c % 2 === 0) ? "2*c" : "2*c - 1";
+    const restExpr = `(c*c - (${crossExpr}))`;
+
+    return {
+      total: "c*c",
+      parts: {
+        a: crossExpr,
+        b: restExpr
+      }
+    };
+  }
+}
+
+
+class CroixCentrale extends Figure {
+  constructor() {
+    super(
+      "Croix centrale (type drapeau)",
+      {
+        a: { min: 4, max: 60, value: 20 }, // largeur totale
+        b: { min: 4, max: 60, value: 15 }, // hauteur totale
+        c: { min: 1, max: 20, value: 3 },  // épaisseur de la croix
+        x: { min: 0, max: 20, value: 0 },  // position horizontale
+        y: { min: 0, max: 20, value: 0 }   // position verticale
+      },
+      ["croix", "fond"]
+    );
+  }
+
+  getSize(p) {
+    return { m: p.b, n: p.a };
+  }
+
+  typeFn(row, col, p) {
+    const vStart = p.x;
+    const hStart = p.y;
+    const inV = col >= vStart && col < vStart + p.c;
+    const inH = row >= hStart && row < hStart + p.c;
+    return (inV || inH) ? "croix" : "fond";
+  }
+
+  getBars(p, cs) {
+    const gridW = p.a * cs;
+    const gridH = p.b * cs;
+    const plateauLeft = MARGIN / 2;
+    const plateauTop = MARGIN / 2;
+
+    return [
+      // 🔵 largeur totale a
+      { side: "top", size: gridW, text: p.a, param: "a", color: "#42a5f5", left: 0 },
+      // 🔴 hauteur totale b
+      { side: "left", size: gridH, text: p.b, param: "b", color: "#ef5350", top: 0 },
+      // 🟣 épaisseur de la croix c (horizontale)
+      {
+        side: "top",
+        size: p.c * cs,
+        text: p.c,
+        param: "c",
+        color: "#1e88e5",
+        absoluteLeft: Math.round(plateauLeft + p.x * cs),
+        absoluteTop: Math.round(plateauTop + gridH)
+      },
+      // 🟡 épaisseur de la croix c (verticale)
+      {
+        side: "left",
+        size: p.c * cs,
+        text: p.c,
+        param: "c",
+        color: "#c62828",
+        absoluteLeft: Math.round(plateauLeft + gridW),
+        absoluteTop: Math.round(plateauTop + p.y * cs)
+      }
+    ];
+  }
+
+  adjustParams(p) {
+    const np = { ...p };
+    if (np.c >= np.a) np.c = np.a - 1;
+    if (np.c >= np.b) np.c = np.b - 1;
+    if (np.c < 1) np.c = 1;
+
+    if (np.x === 0) np.x = Math.floor((np.a - np.c) / 2);
+    if (np.y === 0) np.y = Math.floor((np.b - np.c) / 2);
+
+    return {
+      ...np,
+      _constraints: {
+        c: { min: 1, max: Math.min(np.a - 1, np.b - 1) },
+        x: { min: 0, max: np.a - np.c },
+        y: { min: 0, max: np.b - np.c }
+      }
+    };
+  }
+
+getLiteralExpressions(p) {
+  // 🏁 Drapeau : croix centrale de largeur c dans un rectangle a×b
+  const croix = "a*c + b*c - c*c";
+  const fond = "a*b - (a*c + b*c - c*c)";
+  const total = "a*b"; // cohérence littérale avec la somme des zones
+
+  return {
+    total,
+    parts: { croix, fond }
+  };
+}
+
+}
+
+
+
+
+
+
+class Distributivite extends Figure {
+  constructor() {
+    super(
+      "Distributivité simple",
+      {
+        a: { min: 1, max: 30, value: 6 },
+        b: { min: 1, max: 20, value: 4 },
+        c: { min: 1, max: 20, value: 5 }
+      },
+      ["ab", "ac"]
+    );
+  }
+
+  getSize(p) {
+    return { m: p.a, n: p.b + p.c };
+  }
+
+  typeFn(row, col, p) {
+    return col < p.b ? "ab" : "ac";
+  }
+
+  getBars(p, cellSize) {
+    return [
+      { side: "top", size: p.b * cellSize, text: p.b, param: "b", color: "#42a5f5", left: 0 },
+      { side: "top", size: p.c * cellSize, text: p.c, param: "c", color: "#1e88e5", left: p.b * cellSize },
+      { side: "left", size: p.a * cellSize, text: p.a, param: "a", color: "#ef5350", top: 0 }
+    ];
+  }
+
+  // 🧮 Expressions littérales (a(b + c) = ab + ac)
+  getLiteralExpressions(p) {
+    return {
+      total: "a*(b + c)",
+      parts: {
+        ab: "a*b",
+        ac: "a*c"
+      }
+    };
+  }
+}
+
+
+class DoubleDistributivite extends Figure {
+  constructor() {
+    super(
+      "Double distributivité",
+      {
+        a: { min: 1, max: 30, value: 10 },
+        b: { min: 1, max: 10, value: 3 },
+        c: { min: 1, max: 30, value: 10 },
+        d: { min: 1, max: 10, value: 5 }
+      },
+      ["ac", "ad", "bc", "bd"]
+    );
+  }
+
+  getSize(p) {
+    return { m: p.a + p.b, n: p.c + p.d };
+  }
+
+  typeFn(r, c, p) {
+    const isA = r < p.a;
+    const isC = c < p.c;
+    if (isA && isC) return "ac";
+    if (isA && !isC) return "ad";
+    if (!isA && isC) return "bc";
+    return "bd";
+  }
+
+  getBars(p, cs) {
+    return [
+      { side: "top", size: p.c * cs, text: p.c, param: "c", color: "#42a5f5", left: 0 },
+      { side: "top", size: p.d * cs, text: p.d, param: "d", color: "#1e88e5", left: p.c * cs },
+      { side: "left", size: p.a * cs, text: p.a, param: "a", color: "#ef5350", top: 0 },
+      { side: "left", size: p.b * cs, text: p.b, param: "b", color: "#c62828", top: p.a * cs }
+    ];
+  }
+
+  // 🧮 Expressions littérales : (a+b)(c+d) = ac + ad + bc + bd
+  getLiteralExpressions(p) {
+    return {
+      total: "(a + b)*(c + d)",
+      parts: {
+        ac: "a*c",
+        ad: "a*d",
+        bc: "b*c",
+        bd: "b*d"
+      }
+    };
+  }
+}
+
+
+class IRCarre extends Figure {
+  constructor() {
+    super(
+      "Identité remarquable (a+b)²",
+      {
+        a: { min: 1, max: 30, value: 10 },
+        b: { min: 1, max: 10, value: 3 }
+      },
+      ["aa", "ab", "bb"]
+    );
+  }
+
+  getSize(p) {
+    return { m: p.a + p.b, n: p.a + p.b };
+  }
+
+  typeFn(r, c, p) {
+    const isArow = r < p.a;
+    const isAcol = c < p.a;
+    if (isArow && isAcol) return "aa";        // carré supérieur gauche
+    if (!isArow && !isAcol) return "bb";      // carré inférieur droit
+    return "ab";                              // rectangles latéraux
+  }
+
+  getBars(p, cs) {
+    return [
+      // 🔹 Barres horizontales (haut)
+      { side: "top", size: p.a * cs, text: p.a, param: "a", color: "#42a5f5", left: 0 },
+      { side: "top", size: p.b * cs, text: p.b, param: "b", color: "#1e88e5", left: p.a * cs },
+
+      // 🔹 Barres verticales (gauche)
+      { side: "left", size: p.a * cs, text: p.a, param: "a", color: "#ef5350", top: 0 },
+      { side: "left", size: p.b * cs, text: p.b, param: "b", color: "#c62828", top: p.a * cs }
+    ];
+  }
+
+  // 🧮 Expressions littérales : (a+b)² = a² + 2ab + b²
+  getLiteralExpressions(p) {
+    return {
+      total: "(a + b)*(a + b)",
+      parts: {
+        aa: "a*a",
+        ab: "2*a*b",
+        bb: "b*b"
+      }
+    };
+  }
+}
+
+
+const figureRegistry = {
+  carre: new Carre(),
+  rectangle: new Rectangle(),
+  damier: new Damier(),
+  carreBordure1: new CarreBordure1(),
+  carreBordure: new CarreBordure(),
+  triangleDiagonal: new TriangleDiagonal(),
+  x: new XFigure(),
+  croixCentrale: new CroixCentrale(),
+  distributivite: new Distributivite(),   // 👈 ajout ici
+  doubleDistributivite: new DoubleDistributivite(),
+  irCarre: new IRCarre()
+};
+
+/* === Emojis === */
+function pickTheme(i) {
+  currentThemeIndex = i % themes.length;
+  return themes[currentThemeIndex].slice();
+}
+
+function applyThemeToTypes(types, force = false) {
+  let emojis = pickTheme(currentThemeIndex).slice();
+  if (force) emojis.sort(() => Math.random() - 0.5);
+
+  const newMap = {};
+  types.forEach((t, i) => {
+    newMap[t] = emojis[i % emojis.length];
+  });
+  currentEmojiMap = newMap;
+}
+
+function buildParamsUI(figName) {
+  // 🧹 Nettoyage initial
+  paramsDiv.innerHTML = "";
+  modeZone.innerHTML = "";
+
+  const fig = figureRegistry[figName];
+
+  // 🧩 Appliquer un thème (emoji) pour les types si on est en mode emoji
+if (!useColorMode) {
+  applyThemeToTypes(fig.types, true);
+}
+
+  // 🎨 Palette pour le mode couleur
+const palette = {
+  // --- Couleurs de base ---
+  a: "#e53935",     // 🔴 rouge vif
+  b: "#1e88e5",     // 🔵 bleu saturé
+  c: "#43a047",     // 🟢 vert profond
+  d: "#fbc02d",     // 🟡 jaune chaud
+
+  // --- Alias pour les produits (mêmes teintes réutilisées) ---
+  ab: "#1e88e5",    // même que b
+  ac: "#43a047",    // même que c
+  ad: "#fbc02d",    // même que d
+  bc: "#43a047",    // idem c
+  bd: "#fbc02d",    // idem d
+  aa: "#e53935",    // idem a
+  bb: "#1e88e5",    // idem b
+
+  // --- Spécifiques à d’autres figures ---
+  fond: "#90caf9",  // bleu clair
+  croix: "#8e24aa"  // violet profond
+};
+
+
+
+  // 🟦 Création des boutons de type
+  fig.types.forEach(t => {
+    const btn = document.createElement("button");
+    btn.dataset.type = t;
+    btn.classList.add("emoji-toggle");
+    btn.dataset.active = "1";
+
+    if (useColorMode) {
+      // 🎨 Mode couleur → fond coloré, pas d’emoji
+      btn.style.background = palette[t] || "#ccc";
+      btn.textContent = "";
+    } else {
+      // 🍓 Mode emoji → emoji dans le bouton
+      btn.style.background = "#fff";
+      btn.textContent = currentEmojiMap[t];
+    }
+
+    // ✨ Fantôme : clic pour activer/désactiver le type
+btn.addEventListener("click", () => {
+  btn.dataset.active = btn.dataset.active === "1" ? "0" : "1";
+  btn.style.opacity = btn.dataset.active === "1" ? "1" : "0.4";
+
+  // 🔄 Redessine la figure
+  dessinerFigure(figName, currentParams);
+
+  // 🔤 Si on est en mode littéral, on recalcule la question à jour
+  if (useLiteralMode) poserQuestion(figName, currentParams);
+});
+
+
+    modeZone.appendChild(btn);
+  });
+
+  // 🧮 Interface des paramètres
+  const inputs = {};
+  const container = document.createElement("div");
+  container.className = "param-container";
+
+  // Valeurs initiales
+  let values = { ...currentParams };
+  for (const [k, cfg] of Object.entries(fig.params)) {
+    if (values[k] === undefined) values[k] = cfg.value;
+  }
+  if (fig.adjustParams) values = fig.adjustParams(values);
+
+  // Champs pour chaque paramètre
+  for (const [key, cfg] of Object.entries(fig.params)) {
+    const item = document.createElement("div");
+    item.className = "param-item";
+
+    const label = document.createElement("label");
+    label.textContent = key + ":";
+
+    const input = document.createElement("input");
+    input.type = "number";
+    input.min = cfg.min;
+    input.max = cfg.max;
+    input.value = values[key];
+    input.step = 1;
+
+    inputs[key] = input;
+    item.appendChild(label);
+    item.appendChild(input);
+    container.appendChild(item);
+  }
+
+  if (container.children.length > 0) paramsDiv.appendChild(container);
+
+  // 🌀 Mise à jour dynamique lors d’un changement de paramètre
+  function update() {
+    const newValues = {};
+    for (const [k, inp] of Object.entries(inputs)) {
+      newValues[k] = parseInt(inp.value);
+    }
+
+    let normalized = newValues;
+    if (fig.adjustParams) normalized = fig.adjustParams(newValues);
+
+    if (normalized._constraints) {
+      for (const [k, cons] of Object.entries(normalized._constraints)) {
+        if (inputs[k]) {
+          inputs[k].min = cons.min;
+          inputs[k].max = cons.max;
+          if (normalized[k] < cons.min) normalized[k] = cons.min;
+          if (normalized[k] > cons.max) normalized[k] = cons.max;
+          inputs[k].value = normalized[k];
+        }
+      }
+    }
+
+    // ✅ Réinitialisation de la zone de réponse et feedback
+    resetReponseZone();
+
+    dessinerFigure(figName, normalized);
+    currentParams = { ...normalized };
+  }
+
+  // 📡 Lier l’événement sur tous les inputs
+  for (const inp of Object.values(inputs)) {
+    inp.addEventListener("input", update);
+  }
+
+  // 🖼️ Dessin initial
+  update();
+}
+
+
+
+
+/* === Dessin === */
+function createCell(type, cs, p) {
+  const cell = document.createElement("div");
+  cell.className = `cell type-${type}`;
+  cell.style.width = cs + "px";
+  cell.style.height = cs + "px";
+  cell.style.lineHeight = cs + "px";
+  cell.style.fontSize = (cs * 0.75) + "px";
+
+  // 🔎 Vérifie l'état du bouton pour ce type
+  const btn = document.querySelector(`#modeZone button[data-type="${type}"]`);
+  const isActive = !btn || btn.dataset.active === "1";
+
+  if (useColorMode) {
+    // 🎨 Mode couleur
+const palette = {
+  // --- Couleurs de base ---
+  a: "#e53935",     // 🔴 rouge vif
+  b: "#1e88e5",     // 🔵 bleu saturé
+  c: "#43a047",     // 🟢 vert profond
+  d: "#fbc02d",     // 🟡 jaune chaud
+
+  // --- Alias pour les produits (mêmes teintes réutilisées) ---
+  ab: "#1e88e5",    // même que b
+  ac: "#43a047",    // même que c
+  ad: "#fbc02d",    // même que d
+  bc: "#43a047",    // idem c
+  bd: "#fbc02d",    // idem d
+  aa: "#e53935",    // idem a
+  bb: "#1e88e5",    // idem b
+
+  // --- Spécifiques à d’autres figures ---
+  fond: "#90caf9",  // bleu clair
+  croix: "#8e24aa"  // violet profond
+};
+
+
+
+    cell.style.background = palette[type] || "#ccc";
+    cell.style.border = "1px solid rgba(255,255,255,0.8)";
+    cell.textContent = "";
+  } else {
+    // 🍓 Mode emoji
+    cell.style.background = "transparent";
+    cell.style.border = "none";
+    cell.textContent = currentEmojiMap[type] || "";
+  }
+
+  // 👻 Appliquer le fantôme quelle que soit la version
+  if (!isActive) {
+    cell.classList.add("ghost");
+    cell.style.filter = "grayscale(80%)";
+    cell.style.opacity = "0.3";
+  } else {
+    cell.classList.remove("ghost");
+    cell.style.filter = "none";
+    cell.style.opacity = "1";
+  }
+
+  return cell;
+}
+
+
+
+
+function getCellContent(type,p){if(type==="fond")return"";const btn=document.querySelector(`#modeZone button[data-type="${type}"]`);if(btn&&btn.dataset.active==="0")return"";return currentEmojiMap[type]||"";}
+function compterEmoji(figName,params){const fig=figureRegistry[figName];const{m,n}=fig.getSize(params);const counts={};for(let r=0;r<m;r++){for(let c=0;c<n;c++){const t=fig.typeFn(r,c,params);if(getCellContent(t,params)!==""){counts[t]=(counts[t]||0)+1;}}}return counts;}
+
+function buildLiteralExpression(figName, params) {
+  const fig = figureRegistry[figName];
+  const exprs = fig.getLiteralExpressions(params);
+
+  // Liste des boutons types
+  const allTypes = fig.types;
+  const visibles = allTypes.filter(t => {
+    const btn = document.querySelector(`#modeZone button[data-type="${t}"]`);
+    return !btn || btn.dataset.active === "1";
+  });
+
+  // 🧠 Si tous les types sont actifs → total
+  if (visibles.length === allTypes.length) {
+    return exprs.total;
+  }
+
+  // 🧩 Sinon somme des parties visibles
+  return visibles.map(t => exprs.parts[t]).join(" + ");
+}
+
+
+
+
+
+
+
+function poserQuestion(figName, params) {
+  const counts = compterEmoji(figName, params);
+  const total = Object.values(counts).reduce((a,b)=>a+b,0);
+  targetCount = total;
+
+  const fig = figureRegistry[figName];
+
+if (useLiteralMode) {
+  // 🔤 Mode littéral : on ne montre PAS la réponse exacte
+  const expr = buildLiteralExpression(figName, params);
+  window.refExpr = expr; // 💾 on garde la référence pour la validation
+
+  questionDiv.textContent = "Expression littérale du nombre d’emojis visibles :";
+  reponseInput.placeholder = "";
+} else {
+  // 🔢 Mode numérique
+  questionDiv.textContent = "Nombre d’emojis visibles :";
+  reponseInput.placeholder = "Votre réponse";
+}
+
+
+  feedbackDiv.textContent = "";
+  reponseInput.value = "";
+}
+
+function resetReponseZone() {
+  // 🔁 Si un rendu LaTeX est présent, on le remplace par l’input original
+  const latexDiv = document.querySelector(".reponse-latex");
+  if (latexDiv) {
+    latexDiv.replaceWith(reponseInput);
+  }
+
+  // 🧹 Réinitialiser l’input
+  reponseInput.value = "";
+
+  // 🧹 Réinitialiser le feedback
+  feedbackDiv.textContent = "";
+  feedbackDiv.style.color = "#fff";
+}
+
+
+
+
+function dessinerFigure(figName, params) {
+  const fig = figureRegistry[figName];
+  const { m: rows, n: cols } = fig.getSize(params);
+
+  const W = geo.clientWidth;
+  const H = geo.clientHeight;
+  const GEO_MARGIN = 20;
+
+  const usableW = W - 2 * GEO_MARGIN;
+  const usableH = H - 2 * GEO_MARGIN;
+
+  // 📏 Taille d'une cellule
+let cs = Math.min((usableW - MARGIN) / cols, (usableH - MARGIN) / rows);
+
+// 🧹 Corrige les artefacts subpixel
+const gridW = Math.round(cols * cs);
+const gridH = Math.round(rows * cs);
+
+// 📏 Recalcule la taille réelle d'une cellule pour tomber pile
+cs = gridW / cols;
+
+const plateauW = gridW + MARGIN;
+const plateauH = gridH + MARGIN;
+
+  // 📍 Origine du coin haut gauche du plateau
+  const originX = GEO_MARGIN + (usableW - plateauW) / 2 + MARGIN / 2;
+  const originY = GEO_MARGIN + (usableH - plateauH) / 2 + MARGIN / 2;
+
+  // 📦 Création ou récupération du plateau
+  let plateau = document.getElementById("plateau");
+  if (!plateau) {
+    plateau = document.createElement("div");
+    plateau.id = "plateau";
+    geo.appendChild(plateau);
+  }
+
+  // 🧹 Nettoyage plateau (grille + barres précédentes)
+  plateau.innerHTML = "";
+  plateau.style.width = plateauW + "px";
+  plateau.style.height = plateauH + "px";
+  plateau.style.left = Math.round(GEO_MARGIN + (usableW - plateauW) / 2) + "px";
+  plateau.style.top = Math.round(GEO_MARGIN + (usableH - plateauH) / 2) + "px";
+  plateau.style.position = "absolute";
+
+  // 🟩 Grille emoji
+  const figDiv = document.createElement("div");
+  figDiv.style.position = "absolute";
+  figDiv.style.left = MARGIN / 2 + "px";
+  figDiv.style.top = MARGIN / 2 + "px";
+  figDiv.style.display = "grid";
+  figDiv.style.gridTemplateColumns = `repeat(${cols}, ${cs}px)`;
+  figDiv.style.gridTemplateRows = `repeat(${rows}, ${cs}px)`;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const type = fig.typeFn(r, c, params);
+      const cell = createCell(type, cs, params);
+      figDiv.appendChild(cell);
+    }
+  }
+
+  plateau.appendChild(figDiv);
+
+  // 📏 Barres de mesure
+  const bars = fig.getBars ? fig.getBars(params, cs) : [];
+
+  bars.forEach(b => {
+    const div = document.createElement("div");
+    div.className = "bar " + b.side;
+    div.style.background = b.color;
+    div.textContent = useLiteralMode
+  ? (b.param || b.text)    // 🔤 affiche la lettre si disponible
+  : b.text;                // sinon affiche la valeur numérique
+
+    div.style.position = "absolute";
+    div.style.display = "flex";
+    div.style.justifyContent = "center";
+    div.style.alignItems = "center";
+
+if (b.side === "top") {
+  // ✅ Décalage vertical vers l'extérieur uniquement
+  div.style.left =
+    (b.absoluteLeft !== undefined ? b.absoluteLeft : MARGIN / 2 + (b.left || 0)) + "px";
+  div.style.top =
+    (b.absoluteTop !== undefined
+      ? b.absoluteTop
+      : MARGIN / 2 - BAR_THICKNESS - BAR_MARGIN) + "px";
+
+  div.style.width = b.size + "px";
+  div.style.height = BAR_THICKNESS + "px";
+}
+
+if (b.side === "left") {
+  // ✅ Décalage horizontal vers l'extérieur, mais PAS verticalement
+  div.style.left =
+    (b.absoluteLeft !== undefined
+      ? b.absoluteLeft
+      : MARGIN / 2 - BAR_THICKNESS - BAR_MARGIN) + "px";
+  div.style.top =
+    (b.absoluteTop !== undefined
+      ? b.absoluteTop
+      : MARGIN / 2 + (b.top || 0)) + "px";
+
+  div.style.width = BAR_THICKNESS + "px";
+  div.style.height = b.size + "px";
+}
+
+
+
+
+    // ✅ IMPORTANT : on reste dans le plateau pour que le nettoyage fonctionne
+    plateau.appendChild(div);
+  });
+
+  poserQuestion(figName, params);
+  currentParams = { ...params };
+}
+
+/* === Events === */
+for(const[name,fig]of Object.entries(figureRegistry)){const opt=document.createElement("option");opt.value=name;opt.textContent=fig.label;formeSelect.appendChild(opt);}
+formeSelect.addEventListener("change",()=>buildParamsUI(formeSelect.value));
+document.getElementById("themeBtn").addEventListener("click", () => {
+  // 🔁 Passe simplement au thème suivant
+  currentThemeIndex = (currentThemeIndex + 1) % themes.length;
+
+  const figName = formeSelect.value;
+  const oldParams = { ...currentParams };
+
+  applyThemeToTypes(figureRegistry[figName].types);
+  buildParamsUI(figName);
+  dessinerFigure(figName, oldParams);
+});
+
+shuffleBtn.addEventListener("click", () => {
+  const figName = formeSelect.value;
+  const fig = figureRegistry[figName];
+
+  // ✅ Sauvegarde des valeurs actuelles
+  const oldParams = { ...currentParams };
+
+  // Shuffle du thème
+  applyThemeToTypes(fig.types, true);
+
+  // Reconstruit l’UI
+  buildParamsUI(figName);
+
+  // ✅ Restaure les anciennes valeurs si possible
+  dessinerFigure(figName, oldParams);
+});
+
+function isEquivalent(exprUser, exprRef) {
+  // 🧮 Normalisation complète avant évaluation
+  function normalize(expr) {
+    return expr
+      // --- puissances ---
+      .replace(/([a-dA-D])\^2\b/g, "($1*$1)")                   // a^2 → (a*a)
+      .replace(/\(([^()]+)\)\^2\b/g, "($1)*($1)")               // (a+b)^2 → (a+b)*(a+b)
+      .replace(/([a-dA-D])²\b/g, "($1*$1)")                     // a² → (a*a)
+      .replace(/\(([^()]+)\)²\b/g, "($1)*($1)")                 // (a+b)² → (a+b)*(a+b)
+      .replace(/([a-dA-D])\^3\b/g, "($1*$1*$1)")                // a^3 → (a*a*a)
+      .replace(/\(([^()]+)\)\^3\b/g, "($1)*($1)*($1)")          // (a+b)^3 → (a+b)*(a+b)*(a+b)
+      .replace(/([a-dA-D])³\b/g, "($1*$1*$1)")                  // a³ → (a*a*a)
+      .replace(/\(([^()]+)\)³\b/g, "($1)*($1)*($1)")            // (a+b)³ → (a+b)*(a+b)*(a+b)
+      // --- produits implicites ---
+      .replace(/(\d)([a-dA-D])/g, "$1*$2")                      // 3a → 3*a
+      .replace(/([a-dA-D])\(/g, "$1*(")                         // a(b+c) → a*(b+c)
+      .replace(/\)([a-dA-D])/g, ")*$1")                         // (a+b)c → (a+b)*c
+      .replace(/([a-dA-D])([a-dA-D])/g, "$1*$2");               // ab → a*b
+  }
+
+  const cleanUser = normalize(exprUser);
+  const cleanRef  = normalize(exprRef);
+
+  try {
+    const testValues = [2, 3, 5, 7];
+    const vars = ["a", "b", "c", "d"];
+
+    for (const a of testValues) {
+      for (const b of testValues) {
+        for (const c of testValues) {
+          for (const d of testValues) {
+            const userVal = Function("a,b,c,d", `return (${cleanUser});`)(a, b, c, d);
+            const refVal  = Function("a,b,c,d", `return (${cleanRef});`)(a, b, c, d);
+            if (Math.abs(userVal - refVal) > 1e-9) return false;
+          }
+        }
+      }
+    }
+    return true;
+  } catch (e) {
+    console.warn("Erreur dans isEquivalent:", e);
+    return false;
+  }
+}
+
+
+
+
+validerBtn.addEventListener("click", () => {
+
+  // === 🧮 MODE LITTÉRAL ===
+  if (useLiteralMode) {
+    const exprL = reponseInput.value.trim();
+    const ref = (window.refExpr || "").trim();
+
+    if (exprL === "") {
+      feedbackDiv.textContent = "💡 Essaie d’écrire une expression avec a, b, c…";
+      feedbackDiv.style.color = "#ffd54f";
+      return;
+    }
+
+    // 🔎 Test d'équivalence symbolique sur plusieurs valeurs
+    if (isEquivalent(exprL, ref)) {
+      feedbackDiv.textContent = "✅ Bien joué, ton expression est cohérente !";
+      feedbackDiv.style.color = "#0f0";
+    } else {
+      feedbackDiv.textContent = "❌ Pas encore, observe bien les zones visibles…";
+      feedbackDiv.style.color = "#ff0";
+    }
+
+    return; // 🔒 on arrête ici — pas de calcul numérique
+  }
+
+  // === 🔢 MODE NUMÉRIQUE ===
+  const expr = reponseInput.value.trim();
+  let val;
+
+  try {
+    val = Function(`"use strict"; return (${expr});`)();
+  } catch (e) {
+    feedbackDiv.textContent = "⚠️ Expression invalide.";
+    feedbackDiv.style.color = "#ff0";
+    return;
+  }
+
+  // 📐 Création du rendu LaTeX
+  const latexDiv = document.createElement("div");
+  latexDiv.className = "reponse-latex";
+  latexDiv.innerHTML = `\\( ${expr.replace(/\*/g, '\\times ')} \\)`;
+
+  if (Number(val) !== targetCount) {
+    // ❌ Faux : proposer de réessayer
+    const closeBtn = document.createElement("div");
+    closeBtn.className = "close-btn";
+    closeBtn.textContent = "✖";
+    closeBtn.addEventListener("click", () => {
+      latexDiv.replaceWith(reponseInput);
+      reponseInput.value = "";
+      feedbackDiv.textContent = "";
+      feedbackDiv.style.color = "#fff";
+      reponseInput.focus();
+    });
+    latexDiv.appendChild(closeBtn);
+
+    feedbackDiv.textContent = "❌ Faux ! Réessaie.";
+    feedbackDiv.style.color = "#ff0";
+  } else {
+    // ✅ Bravo : on confirme la valeur trouvée
+    feedbackDiv.textContent = `✅ Bravo ! La valeur finale est ${targetCount}.`;
+    feedbackDiv.style.color = "#0f0";
+  }
+
+  // Remplacer l’input par le rendu LaTeX
+  reponseInput.replaceWith(latexDiv);
+
+  // Rendu MathJax
+  if (window.MathJax) {
+    MathJax.typesetPromise();
+  }
+});
+
+
+
+document.getElementById("toggleModeBtn").addEventListener("click", () => {
+  useColorMode = !useColorMode;
+  console.log("🔄 Nouveau mode :", useColorMode ? "Couleur" : "Emoji");
+
+  // ✅ Reconstruit les boutons selon le mode
+  buildParamsUI(formeSelect.value);
+
+  // ✅ Redessine la figure dans le bon mode
+  dessinerFigure(formeSelect.value, currentParams);
+
+  // ✅ Met à jour le texte du bouton
+  document.getElementById("toggleModeBtn").textContent = useColorMode ? "🔤 Emoji" : "🎨 Couleur";
+});
+
+
+
+// 🧹 Dès que l’élève modifie sa réponse, on efface le feedback
+reponseInput.addEventListener("input", () => {
+  feedbackDiv.textContent = "";
+  feedbackDiv.style.color = "#fff";
+});
+
+reponseInput.addEventListener("keydown",e=>{if(e.key==="Enter")validerBtn.click();});
+
+const toggleModeBtn = document.getElementById("toggleModeBtn");
+
+// 🧹 on supprime tout éventuel ancien listener (évite le double déclenchement)
+toggleModeBtn.replaceWith(toggleModeBtn.cloneNode(true));
+const newToggleModeBtn = document.getElementById("toggleModeBtn");
+
+newToggleModeBtn.addEventListener("click", () => {
+  useColorMode = !useColorMode;
+
+  buildParamsUI(formeSelect.value);
+
+  const fig = figureRegistry[formeSelect.value];
+  let normalized = { ...currentParams };
+  if (fig.adjustParams) normalized = fig.adjustParams(normalized);
+
+  dessinerFigure(formeSelect.value, normalized);
+  currentParams = { ...normalized };
+
+  newToggleModeBtn.textContent = useColorMode ? "😀" : "🎨";
+});
+
+// --- Gestion du bouton "Montrer la question" ---
+toggleQBtn.addEventListener("click", () => {
+  const visible = questionBlock.style.display === "block";
+  questionBlock.style.display = visible ? "none" : "block";
+  toggleQBtn.textContent = visible ? "❓ Montrer la question" : "❌ Cacher la question";
+});
+
+const literalBtn = document.getElementById("literalBtn");
+literalBtn.style.opacity = "0.5"; // 🔘 initialement éteint = pas littéral
+
+literalBtn.addEventListener("click", () => {
+  useLiteralMode = !useLiteralMode;
+
+  // 💡 cohérence visuelle
+  literalBtn.style.opacity = useLiteralMode ? "1" : "0.5";
+  literalBtn.style.background = useLiteralMode ? "#ffd54f" : "#fff"; // petit effet visuel
+  literalBtn.style.color = useLiteralMode ? "#000" : "#e53935";
+
+  dessinerFigure(formeSelect.value, currentParams);
+  poserQuestion(formeSelect.value, currentParams); // 💬 met la question à jour
+  console.log("🔤 Mode littéral :", useLiteralMode);
+});
+
+
+window.addEventListener("resize",()=>{const figName=formeSelect.value;if(!figName||!figureRegistry[figName])return;dessinerFigure(figName,currentParams);});
+buildParamsUI("carre");
+</script>
+</body>
+</html>

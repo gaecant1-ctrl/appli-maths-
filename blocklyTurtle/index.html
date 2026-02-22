@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blockly </title>
+
+  <!-- Importer Blockly -->
+  <script src="https://unpkg.com/blockly/blockly.min.js"></script>
+  <script src="acorn_interpreter.js"></script>
+  <!-- Style pour le canevas -->
+  <style>
+    /* Ajouter un box-sizing global */
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    
+
+    
+    #container {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      padding: 10px;
+      width: 100%;
+      max-width: 1400px;
+      margin: 0 auto;
+
+    }
+
+    #rendu {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 450px;
+      height: 550px;
+      border: 2px solid #000;
+      padding: 10px;
+      box-sizing: border-box;
+      background : #f5f5dc;
+    }
+    
+    #prog {
+      display: flex;
+      flex-direction: column;
+      width: 570px;
+      height: 550px;
+      border: 2px solid #000;
+      padding: 10px;
+      box-sizing: border-box;
+      background : lightblue;
+    }
+
+    #blocklyDiv {
+      width: 550px;
+      height: 550px;
+      border: 2px solid #000;
+      box-sizing: border-box;
+    }
+    
+#maGrille {
+  width: 250px;
+  height: 300px;
+    border: 2px solid #000;
+ /* overflow: hidden; /* Empêche le débordement du contenu */
+  box-sizing: border-box; /* Inclut la bordure dans les dimensions */
+  position: relative; /* Pour un meilleur contrôle des éléments enfants */
+}
+
+#maGrille canvas {
+  width: 100%; /* Assure que le canevas prend toute la largeur du parent */
+  height: 100%; /* Assure que le canevas prend toute la hauteur du parent */
+  box-sizing: border-box; /* Inclut les bordures dans la taille du canevas */
+}
+    
+
+    /* Modifier la largeur de la flyout et de la barre de défilement */
+    .blocklyFlyout {
+    }
+
+    .blocklyScrollbarVertical {
+      display: none; /* Masque complètement la barre de défilement */
+    }
+
+
+button {
+  border-radius: 8px;
+  margin-top: 10px;
+  margin-bottom: 20px;
+  padding: 10px 15px;
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+button:hover {
+  background: linear-gradient(135deg, #45a049, #3d8b40);
+  transform: scale(1.05);
+}
+
+#resetButton {
+  margin-top: 25px;
+  background: linear-gradient(135deg, #f44336, #e41f1f);
+}
+
+#resetButton:hover {
+  background: linear-gradient(135deg, #e41f1f, #c21717);
+}
+
+#messageContainer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 400px;
+  padding: 10px;
+  margin: 10px auto;
+  font-size: 16px;
+  font-weight: bold;
+  color: white;
+  background-color: #444;
+  border: 3px solid transparent;
+  border-radius: 8px;
+  transition: all 0.3s ease-in-out;
+  position: relative;
+  visibility: hidden; /* Caché par défaut */
+}
+
+#messageContainer.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+#messageContainer.hidden {
+  opacity: 0;
+  visibility: hidden;
+}
+
+#messageAlerte {
+  flex: 1;
+  text-align: center;
+}
+
+#closeAlert {
+  cursor: pointer;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: bold;
+  color: white;
+  background-color: #888;
+  border-radius: 50%;
+  border: 1px solid #555;
+  transition: all 0.3s;
+}
+
+#closeAlert:hover {
+  background-color: red;
+  border-color: darkred;
+  color: white;
+}
+
+#compteurBlocs {
+  font-size: 14px;
+  font-weight: bold;
+  text-align: center;
+  margin-top: 20px;
+}
+
+#objectif {
+  display: flex;
+  flex-direction : column;
+  align-items: center; /* Centrage vertical */
+
+      background-color: #d4edda; /* Vert doux */
+      color: #155724; /* Texte vert foncé pour le contraste */
+      padding: 15px;
+      margin: 20px auto;
+      width: 80%;
+      max-width: 800px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      font-size: 16px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+.input-container {
+  color: black;
+  display: flex;
+  flex-direction : row;
+  align-items: center;
+  gap: 10px;
+}
+
+label {
+  font-weight: bold;
+}
+
+input {
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  width: 50px;
+  text-align: center;
+}
+
+    #objec::before {
+      content: "🎯";
+      font-size: 40px;
+    }
+
+input[type="range"] {
+  width: 200px; /* Ajuste la largeur de la barre */
+}
+
+.slider-container {
+            display: flex;
+            /*justify-content: space-between;  /* Espacement des éléments sur la même ligne */
+            align-items: center;  /* Centrage vertical des éléments */
+            gap: 0px;  /* Espacement entre les éléments */
+            width: 250px;  /* Fixer la largeur du conteneur pour éviter que les éléments ne s'étendent trop */
+            border: 2px solid purple;/*dure visible autour du conteneur du slider */
+            margin-top : 20px;
+  
+}
+
+
+        /* Vous pouvez ajuster la valeur du margin-bottom selon vos préférences */
+.emoji-left, .emoji-right {
+  transform: scaleX(-1); 
+            font-size: 1rem;  /* Ajuster la taille des emojis */
+
+            padding: 5px; /* Padding pour rendre les bordures visibles */
+        }
+  </style>
+  
+</head>
+<body>
+<div id="objectif">
+  <span id="objec"> Ecrire un programme réalisant le tracé affiché</span>
+  <div class="input-container">
+    <label for="exoInput">Choisissez votre exercice :</label>
+    <input type="number" id="exoInput" min="1" max="5" value="1" />
+  </div></div>
+  <!-- Div pour Blockly -->
+  <div id="container">
+    <div id="prog">
+      <div id="blocklyDiv"></div>
+      <div id="messageContainer">
+        <span id="messageAlerte"></span>
+        <span id="closeAlert" onclick="fermerAlerte()">✖</span>
+      </div>
+    </div>
+    <div id="rendu">
+
+      <button id="button"></button>
+      <div id="maGrille"></div>
+      <div id="compteurBlocs">Nb de blocs utilisés : <span id="nbBlocs">0</span>/<span id="nbBlocksTot">0</span></div>
+        <div class="slider-container">
+            <div class="emoji-left">🐢</div> <!-- Emoji de gauche -->
+            <input type="range" id="delai" min="100" max="5000" step="100" value="1000" oninput="updateValeur()">
+            <div class="emoji-right">🐇</div> <!-- Emoji de droite -->
+        </div>
+      <button id="resetButton">Réinitialiser</button>
+    </div>
+  </div>
+
+  <script>
+
+let delai=1000;
+
+function updateValeur() {
+            delai = 1000 - document.getElementById("delai").value;
+          
+        }
+
+Blockly.Blocks['programme'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("Programme      "); // Texte affiché sur le bloc
+    this.setNextStatement(true, null);
+    this.setColour(290); // Couleur du bloc
+    this.setTooltip("Point de départ du programme.");
+    this.setHelpUrl("");
+  }
+};
+
+Blockly.JavaScript.forBlock['programme'] = function(block) {
+
+  return "";
+};
+
+Blockly.Blocks['test_equals'] = {
+  init: function() {
+    this.appendValueInput("A")
+        .setCheck(null)
+    this.appendValueInput("B")
+        .setCheck(null)
+        .appendField("=");
+    this.setInputsInline(true);
+    this.setOutput(true, "Boolean"); // Le bloc retourne un booléen (true/false)
+    this.setColour(120); // Vert
+    this.setTooltip("Vérifie si les deux valeurs sont égales.");
+    this.setHelpUrl("");
+  }
+};
+
+Blockly.JavaScript.forBlock['test_equals'] = function(block) {
+  var valueA = Blockly.JavaScript.valueToCode(block, 'A', Blockly.JavaScript.ORDER_EQUALITY) || '0';
+  var valueB = Blockly.JavaScript.valueToCode(block, 'B', Blockly.JavaScript.ORDER_EQUALITY) || '0';
+  var code = `${valueA} == ${valueB}`;
+  return [code, Blockly.JavaScript.ORDER_EQUALITY];
+};
+
+Blockly.Blocks['math_number'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField(new Blockly.FieldNumber(0), "NUM");
+    this.setOutput(true, "Number");
+    this.setColour(10); // 100 = Jaune, tu peux changer selon ton besoin
+    this.setTooltip("Un nombre.");
+    this.setHelpUrl("");
+  }
+};
+
+
+    
+function attendre(ms) {
+    return new Promise(resolve => {
+        setTimeout(() => {
+            if (!executionEnCours) return; // Arrête si on clique sur "Réinitialiser"
+            resolve();
+        }, ms);
+    });
+}
+
+
+
+
+
+
+
+  Blockly.Blocks['mettre_a'] = {
+  init: function() {
+    this.appendValueInput("VAR")
+        .setCheck(["Number", "String"])
+        .appendField("mettre");
+    this.appendValueInput("VALUE")
+        .setCheck(["Number", "String"])
+        .appendField("à");
+    this.setInputsInline(true);
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(10);
+    this.setTooltip("Mettre une valeur à une variable");
+    this.setHelpUrl("");
+  }
+};
+
+
+    Blockly.JavaScript.forBlock['mettre_a'] = function(block) {
+ var variable = Blockly.JavaScript.valueToCode(block, 'VAR', Blockly.JavaScript.ORDER_ATOMIC);
+  var valeur = Blockly.JavaScript.valueToCode(block, 'VALUE', Blockly.JavaScript.ORDER_ATOMIC);
+  var code = `${variable} = ${valeur};\n`;
+  return code;
+};
+    
+    Blockly.Blocks['n'] = {
+      init: function() {
+        this.appendDummyInput()
+            .appendField("n");
+        this.setOutput(true, "Number");
+        this.setColour(10);
+        this.setTooltip("Récupérer la valeur de n");
+        this.setHelpUrl("");
+      }
+    };
+    
+       Blockly.Blocks['c'] = {
+      init: function() {
+        this.appendDummyInput()
+            .appendField("c");
+        this.setOutput(true, "String");
+        this.setColour(10);
+        this.setTooltip("Récupérer la valeur de c");
+        this.setHelpUrl("");
+      }
+    };
+
+    Blockly.JavaScript.forBlock['n'] = function(block) {
+      var code = 'n'; // Retourne la valeur de n
+      return [code, Blockly.JavaScript.ORDER_ATOMIC];
+    };
+    
+        Blockly.JavaScript.forBlock['c'] = function(block) {
+      var code = 'c'; // Retourne la valeur de n
+      return [code, Blockly.JavaScript.ORDER_ATOMIC];
+    };
+    
+// Définition du bloc "ajouter à"
+Blockly.Blocks['ajouter_a'] = {
+  init: function() {
+    this.appendValueInput("VALUE")
+        .setCheck("Number")
+        .appendField("Ajouter ");
+    this.appendValueInput("VAR")
+        .setCheck("Number")
+        .appendField("à");
+    this.setInputsInline(true);
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(10);
+    this.setTooltip("Ajouter à une variable un nombre");
+    this.setHelpUrl("");
+  }
+};
+
+// Génération du code JavaScript pour "ajouter à"
+Blockly.JavaScript.forBlock['ajouter_a'] = function(block) {
+ var variable = Blockly.JavaScript.valueToCode(block, 'VAR', Blockly.JavaScript.ORDER_ATOMIC);
+  var valeur = Blockly.JavaScript.valueToCode(block, 'VALUE', Blockly.JavaScript.ORDER_ATOMIC);
+  var code = `${variable} = ${variable}+${valeur};\n`;
+  return code;
+};
+
+// Définition du bloc "Si...Sinon"
+Blockly.Blocks['si_sinon'] = {
+  init: function() {
+    this.appendValueInput("CONDITION")
+        .setCheck("Boolean")
+        .appendField("Si");
+    this.appendStatementInput("DO")
+        .setCheck(null)
+        .appendField("alors");
+    this.appendStatementInput("ELSE")
+        .setCheck(null)
+        .appendField("sinon");
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(210);
+    this.setTooltip("Exécute une action si la condition est vraie, sinon une autre.");
+    this.setHelpUrl("");
+  }
+};
+
+// Génération du code JavaScript pour "Si...Sinon"
+Blockly.JavaScript.forBlock['si_sinon'] = function(block) {
+  var condition = Blockly.JavaScript.valueToCode(block, 'CONDITION', Blockly.JavaScript.ORDER_NONE) || 'false';
+  var statements_do = Blockly.JavaScript.statementToCode(block, 'DO');
+  var statements_else = Blockly.JavaScript.statementToCode(block, 'ELSE');
+  var code = `if (${condition}) {\n${statements_do}} else {\n${statements_else}}\n`;
+  return code;
+};
+
+Blockly.Blocks['repeter_x_fois'] = {
+  init: function() {
+    this.appendValueInput("NOMBRE")
+        .setCheck("Number")
+        .appendField("Répéter");
+    this.appendStatementInput("DO")
+        .setCheck(null)
+        .appendField("fois");
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(60);
+    this.setTooltip("Exécute une action plusieurs fois.");
+    this.setHelpUrl("");
+  }
+};
+
+// Génération du code JavaScript
+Blockly.JavaScript.forBlock['repeter_x_fois'] = function(block) {
+    var nombre = Blockly.JavaScript.valueToCode(block, 'NOMBRE', Blockly.JavaScript.ORDER_ATOMIC) || '0';
+    var statements_do = Blockly.JavaScript.statementToCode(block, 'DO');
+
+    var code = `for (let i = 0; i < ${nombre}; i++) {
+         ${statements_do}; 
+    }\n`;
+    return code;
+};
+
+Blockly.Blocks['avancer'] = {
+    init: function() {
+        this.appendDummyInput()
+            .appendField("Avancer de");
+        
+        this.appendValueInput("DISTANCE")
+            .setCheck("Number"); 
+        
+        this.appendDummyInput()
+            .appendField("unités");
+
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(160);
+    }
+};
+
+
+
+Blockly.Blocks['tourner'] = {
+    init: function() {
+        this.appendDummyInput()
+            .appendField("Tourner à gauche de")
+            .appendField(new Blockly.FieldNumber(90), "ANGLE")
+            .appendField("degrés");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(230);
+    }
+};
+
+Blockly.Blocks['lever_stylo'] = {
+    init: function() {
+        this.appendDummyInput()
+            .appendField("Lever le stylo");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(120);
+    }
+};
+
+Blockly.Blocks['baisser_stylo'] = {
+    init: function() {
+        this.appendDummyInput()
+            .appendField("Baisser le stylo");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(120);
+    }
+};
+
+Blockly.Blocks['effacer'] = {
+    init: function() {
+        this.appendDummyInput()
+            .appendField("Effacer le dessin");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(0);
+    }
+};
+
+
+Blockly.JavaScript.forBlock['avancer'] = function(block) {
+    var distance = Blockly.JavaScript.valueToCode(block, 'DISTANCE', Blockly.JavaScript.ORDER_ATOMIC) || '0';
+    return `grille.avancer(${distance});\n await attendre(delai);`;
+};
+
+Blockly.JavaScript.forBlock['tourner'] = function(block) {
+    var angle = block.getFieldValue('ANGLE');
+    return `grille.tourner(${angle});\n await attendre(delai);`;
+};
+
+Blockly.JavaScript.forBlock['lever_stylo'] = function(block) {
+    return `grille.leverStylo();\n`;
+};
+
+Blockly.JavaScript.forBlock['baisser_stylo'] = function(block) {
+    return `grille.baisserStylo();\n`;
+};
+
+Blockly.JavaScript.forBlock['effacer'] = function(block) {
+    return `grille.effacer();\n`;
+};
+
+// Configuration de Blockly avec des blocs de nombres et opérations
+const workspace = Blockly.inject('blocklyDiv', {
+  toolbox: `
+    <xml>
+      <block type="programme"></block>
+      <block type="avancer"></block>
+      <block type="tourner"></block>
+      <block type="n"></block>
+      <block type="math_number"></block>
+      <block type="mettre_a"></block>
+      <block type="ajouter_a"></block>
+      <block type="repeter_x_fois"></block>
+      <block type="lever_stylo"></block>
+      <block type="baisser_stylo"></block>
+      <block type="test_equals"></block>
+
+      <block type="si_sinon"></block>
+    </xml>
+  `,
+
+  media: 'https://unpkg.com/blockly/media/'
+});
+
+
+let block = workspace.newBlock('programme');
+block.initSvg();
+block.render();
+block.moveBy(50, 50); // Position du bloc
+
+ // Fonction pour exécuter le code généré par Blockly
+
+function attend(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+async function runCode() {
+    fermerAlerte();
+    grille.effacer();
+    await attend(500);
+    Blockly.JavaScript.init(workspace);
+    let startBlock = workspace.getTopBlocks().find(b => b.type === "programme");
+
+    if (!startBlock) {
+        alerte("Erreur : Vous devez ajouter un bloc Programme !");
+        return;
+    }
+    workspace.getAllBlocks().forEach(block => block.unselect());
+    executionEnCours=true;
+    try {
+        const code = Blockly.JavaScript.blockToCode(startBlock);
+        console.log("Code généré :", code); // Vérifier le code généré
+        if (!code) {
+            console.log("Aucun code généré.");
+            return;
+        }
+        // Création d'une fonction asynchrone dynamique
+        let asyncFunction = new Function("attendre", "grille", `
+            return (async function() { 
+                ${code} 
+            })();
+        `);
+
+        // Exécution de la fonction avec `await`
+        await asyncFunction(attendre, grille);
+        
+
+    } catch (e) {
+        alerte("Erreur dans le code généré : " + e.message);
+        console.error(e);
+    }
+}
+
+
+
+
+
+
+function mettreAJourCompteur() {
+    let nombreBlocs = workspace.getAllBlocks().length;
+    let compteurElement = document.getElementById("nbBlocs");
+    if (compteurElement.innerText != nombreBlocs) {
+        compteurElement.innerText = nombreBlocs;
+    }
+}
+
+
+    // Ajouter un bouton pour exécuter le code généré
+    const button = document.getElementById("button");
+    button.innerText = "Exécuter";
+    button.onclick = runCode;
+
+
+    // Ajouter la fonctionnalité de réinitialisation
+    const resetButton = document.getElementById("resetButton");
+resetButton.onclick = function () {
+    executionEnCours=false;
+    fermerAlerte();
+    grille.effacer(); 
+    //workspace.clear(); // Efface tous les blocs
+    mettreAJourCompteur(); // Remet à jour le compteur après effacement
+};
+
+
+function alerte(t) {
+    let container = document.getElementById("messageContainer");
+    let label = document.getElementById("messageAlerte");
+
+    label.innerText = t;
+    container.classList.remove("hidden"); // Supprime la classe cachée
+    container.classList.add("visible"); // Ajoute la classe pour afficher
+
+    // Change la couleur de la bordure et du fond selon le message
+    if (t.toLowerCase().includes("erreur")) {
+        container.style.borderColor = "red";
+        container.style.backgroundColor = "#ffcccc";
+        label.style.color = "black";
+    } else if (t.toLowerCase().includes("réussie") || t.toLowerCase().includes("réussi")) {
+        container.style.borderColor = "green";
+        container.style.backgroundColor = "#ccffcc";
+        label.style.color = "black";
+    }
+    else if (t.toLowerCase().includes("échec") || t.toLowerCase().includes("réussi")) {
+        container.style.borderColor = "red";
+        container.style.backgroundColor = "#ffcccc";
+        label.style.color = "black";
+    } else {
+        container.style.borderColor = "blue";
+        container.style.backgroundColor = "#cce5ff";
+        label.style.color = "black";
+    }
+}
+
+
+function fermerAlerte() {
+    let container = document.getElementById("messageContainer");
+    container.classList.remove("visible"); // Retire la classe visible
+    container.classList.add("hidden"); // Ajoute la classe cachée
+}
+
+</script>
+<script src="grille.js"></script>
+<script>
+const grille = new Grille("maGrille");
+let executionEnCours=false;
+
+function nbTotChange(n){
+    document.getElementById("nbBlocksTot").innerText=n;
+}
+    
+    
+function changerExercice() {
+
+    let exercice = document.getElementById("exoInput").value;
+    grille.effacer()
+    
+
+    let phantom = []; // État fantôme basé sur l'exercice choisi
+    let nbBlocksTot= 0;
+    switch (parseInt(exercice)) {
+        case 1:
+            nbTotChange(6);
+            grille.setPosition(100,200);
+            grille.tracerFantome(function() {
+                for (let i = 0; i < 4; i++) {
+                  this.avancer(5);  // Utilise maintenant le canevas actif (ici canvasFantome)
+                  this.tourner(90);
+                 }
+            });
+            break;
+        case 2:
+            nbTotChange(14);
+            grille.setPosition(80,240);
+            grille.tracerFantome(function() {
+                let n=4;
+                for(let j = 0; j < 5; j++) {
+                for (let i = 0; i < 4; i++) {
+                  this.avancer(n);  // Utilise maintenant le canevas actif (ici canvasFantome)
+                  this.tourner(90);
+                 }
+                n=n+1;
+                }
+            });
+            break;
+        case 3:
+            nbTotChange(18);
+            grille.setPosition(120,40);
+            grille.setOrientation(-90)
+            grille.tracerFantome(function() {
+                let n=2;
+                for(let j = 0; j < 3; j++) {
+                for (let i = 0; i < 4; i++) {
+                  this.avancer(n);  // Utilise maintenant le canevas actif (ici canvasFantome)
+                  this.tourner(90);
+                 }
+                 this.leverStylo()
+                 this.avancer(n+1);
+                 this.baisserStylo()
+                n=n+1;
+                }
+            });
+            break;
+          case 4:
+            nbTotChange(15);
+            grille.setPosition(120,120);
+            grille.setOrientation(0)
+            grille.tracerFantome(function() {
+                let n=2;
+                for(let j = 0; j < 6; j++) {
+                for (let i = 0; i < 3; i++) {
+                  this.avancer(n);  // Utilise maintenant le canevas actif (ici canvasFantome)
+                  this.tourner(120);
+                 }
+                this.tourner(60);
+                n=n+1;
+                }
+            });
+            break;
+          case 5:
+            nbTotChange(23);
+            grille.setPosition(20,180);
+            grille.setOrientation(0)
+            grille.tracerFantome(function() {
+                let n=1;
+                for(let j = 0; j < 9; j++) {
+                for (let i = 0; i < 4; i++) {
+                  this.avancer(n);  // Utilise maintenant le canevas actif (ici canvasFantome)
+                  this.tourner(90);
+                 }
+                this.avancer(n);
+                if(n==1){n=2;}else{n=1;};
+                }
+            });
+            break;
+        default:
+            
+    }
+}
+
+
+
+changerExercice()
+
+
+workspace.addChangeListener(mettreAJourCompteur);
+document.getElementById("exoInput").addEventListener("change", changerExercice);
+</script>
+
+
+
+</body>
+</html>

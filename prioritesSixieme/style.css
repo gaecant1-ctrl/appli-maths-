@@ -1,0 +1,541 @@
+/* ===============================
+   Variables (tuning centralisé)
+=================================*/
+:root{
+  /* Hauteurs & snapping */
+  --wrapper-h: 40px;                      /* hauteur exacte d’une ligne (.input-wrapper) */
+  --rows-visible: 5;                      /* nb de lignes visibles dans .reponse */
+  --reponse-h: calc(var(--wrapper-h) * var(--rows-visible));
+
+  /* Espacements wrapper / input */
+  --wrap-pad-v: 6px;
+  --wrap-pad-h: 10px;
+  --input-v-gap: 6px;
+  --input-w: 280px;
+
+  /* Couleurs globales */
+  --text: #222;
+
+  /* Fond */
+  --bg-grad-a: #c2e9fb;
+  --bg-grad-b: #a1c4fd;
+  --bg-gradient: linear-gradient(135deg, var(--bg-grad-a) 0%, var(--bg-grad-b) 100%);
+
+  /* Panneaux / bordures / ombres */
+  --panel-bg: rgba(255,255,255,.9);
+  --panel-border: #e5e7eb;
+  --muted: #e9eef8;
+  --shadow: 0 6px 20px rgba(0,0,0,.10);
+
+  /* Boutons & accents */
+  --primary: #1fa2ff;
+  --primary-hover: #1666c1;
+  --primary-dark: var(--primary-hover);
+  --accent: #7b2cbf;
+
+  /* États / signalétique */
+  --success: #1e7a34;
+  --error: #d00000;
+  --warning: #ffb703;
+  --accent-rgb: 123 44 191;
+
+  /* Correction (fond pâle) */
+  --accent-pale: #f3e8ff;
+  --accent-pale-border: #eadcff;
+  
+  --rows-min: 4;  /* nb minimal de lignes visibles avant correction */
+  --reponse-min-h: calc(var(--wrapper-h) * var(--rows-min));
+  --reponse-max-h: calc(var(--wrapper-h) * var(--rows-visible));
+}
+
+/* ===============================
+   Base
+=================================*/
+* { box-sizing: border-box; }
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--text);
+  background: var(--bg-gradient);
+}
+
+/* ===============================
+   Layout principal
+=================================*/
+#container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;          /* occupe tout l'écran */
+  overflow: hidden;       /* évite double-scroll */
+}
+
+/* ===============================
+   Header / Score / Next
+=================================*/
+/* === Header (titre) === */
+#titre {
+  flex: 0 0 auto;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  background: #fff;
+  color: #000;
+  padding: 10px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.05);
+}
+
+
+#score {
+  font-size: 15px;
+  color: #333;
+  text-align: center;
+  font-weight: 600;
+  line-height: 40px;
+  border: 1px solid var(--panel-border);
+  border-radius: .5rem;
+  background: var(--muted);
+  width: 160px;
+}
+
+#nextButton {
+  width: 160px; height: 40px;
+  padding: .35rem .5rem;
+  border-radius: 8px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background .25s, box-shadow .15s;
+  user-select: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: none;
+}
+#nextButton:hover:not(:disabled) { background: var(--primary-hover); box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+#nextButton:active:not(:disabled) { box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+#nextButton:disabled { background: var(--muted); opacity:1; }
+#nextButton:focus { outline: 3px solid var(--primary); outline-offset: 2px; }
+
+/* ===============================
+   Sélecteur de niveau (160x40)
+=================================*/
+#niveau-slot{
+  flex: 0 0 160px;
+  display: flex;
+  justify-content: center;
+}
+.niveau-picker{
+  width: 100%;
+  height: 40px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: .35rem;
+  padding: 0 .4rem;
+  border: 1px solid var(--panel-border);
+  border-radius: .5rem;
+  background: var(--muted);
+  overflow: hidden;
+}
+.niveau-picker > label{
+  font-size: 14px;
+  color: #111;
+  margin: 0;
+}
+.niveau-picker select{
+  min-width: 0;
+  width: 100%;
+  height: 30px;
+  border: 1px solid #d1d5db;
+  border-radius: .35rem;
+  background: #fff;
+  padding: 0 .5rem;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.niveau-picker select:focus{
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* ===============================
+   Panneau exercice
+=================================*/
+#exercice-container {
+  width: 90%;
+  
+  margin-bottom: 16px;
+  padding: 20px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-radius: 10px;
+  border: 1px solid var(--panel-border);
+  box-shadow: var(--shadow);
+
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* ✗ pas de flex-grow/shrink ici */
+  height: auto;           /* hauteur auto = s’adapte au contenu */
+}
+
+
+/* Titre / question */
+.titre {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 10px;
+  text-align: center;
+  color: var(--accent);
+  letter-spacing: -0.4px;
+}
+.question {
+  margin: 0 0 12px;
+  font-weight: 600;
+  font-size: 18px;
+  color: #2c3e50;
+}
+
+/* ===============================
+   Bandeau résultat
+=================================*/
+#resultat {
+  width: 90%;
+  margin: 12px auto 0;
+  display: none;
+  align-items: center; justify-content: center; gap: .6rem;
+  min-height: 44px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-border);
+  background: #fff; color:#111827;
+  box-shadow: 0 6px 20px rgba(0,0,0,.06);
+  opacity: 0; transform: translateY(-4px);
+  transition: opacity .18s ease, transform .18s ease, background .25s, color .25s;
+}
+#resultat.show { display:flex; opacity:1; transform: translateY(0); }
+#resultat::before { content:"ℹ️"; font-size:1.05rem; }
+#resultat.correct   { background:#ecfdf5; color:#065f46; border-color:#a7f3d0; }
+#resultat.correct::before { content:"✅"; }
+#resultat.incorrect { background:#fef2f2; color:#991b1b; border-color:#fecaca; }
+#resultat.incorrect::before { content:"❌"; }
+#resultat.invalide  { background:#fffbeb; color:#92400e; border-color:#fde68a; }
+#resultat.invalide::before { content:"⚠️"; }
+
+/* ===============================
+   Zones scrollables & snapping
+=================================*/
+
+/* === Zone exercice scrollable === */
+.exercice-zone {
+  flex: 1 1 auto;
+  min-height: 0;          /* autorise le scroll */
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 0;
+}
+
+
+/* === Zone réponses : auto, min et max contrôlés === */
+.reponse {
+  width: 100%;
+  height: auto;                       /* s’adapte au contenu */
+  min-height: var(--reponse-min-h);   /* garde le bouton en bas tant qu’il n’y a pas de correction */
+  max-height: var(--reponse-max-h);   /* devient scrollable si trop long */
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+
+  display: flex;
+  flex-direction: column;
+  gap: 0;                              /* 1 wrapper = 1 “ligne” pile */
+}
+
+.reponse > .input-wrapper {
+  height: var(--wrapper-h);
+  margin: 0;
+  scroll-snap-align: start;
+}
+
+/* Quand une correction est affichée,
+   on autorise .reponse à rétrécir sous la min-height pour que la correction “remonte”. */
+#exercice-container:has(.correction-content:not(:empty)) .reponse {
+  min-height: 0;
+}
+
+.initial-zone {
+  display:flex; flex-direction:column; gap:0; width:100%;
+  scroll-snap-type: y proximity;
+}
+.initial-zone .initial-wrapper {
+  height: var(--wrapper-h);
+  margin: 0;
+  scroll-snap-align: start;
+}
+
+/* Scrollbars discrets (préserve accessibilité) */
+.reponse::-webkit-scrollbar,
+#exercice-container::-webkit-scrollbar { width: 0; height: 0; }
+.reponse { scrollbar-width: none; } /* Firefox */
+
+/* ===============================
+   Wrappers: initial & input
+=================================*/
+.initial-wrapper,
+.input-wrapper {
+  height: var(--wrapper-h);
+  padding: var(--wrap-pad-v) var(--wrap-pad-h);
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;              /* jamais de retour à la ligne */
+  gap: .6em;
+  width: 100%;
+
+  background: #fff;
+  border: 1px solid #e0e5ec;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0,0,0,.08);
+  font-size: 16px;
+}
+
+/* Partie gauche (lettre + signe + input/latex) */
+.left-part {
+  display: flex;
+  align-items: baseline;
+  flex: 1 1 auto;
+  gap: .6em;
+  min-width: 0;                   /* autorise la contraction */
+  flex-wrap: nowrap;
+}
+
+/* Préfixe (lettre + signe) */
+.prefix {
+  display: flex;
+  align-items: baseline;
+  gap: .35rem;
+  flex: 0 0 auto;
+}
+.prefix > .lhs-letter,
+.prefix > .equal-sign { margin-right: 0 !important; }
+
+.lhs-letter,
+.equal-sign {
+  display: inline-block;
+  min-width: 1ch;
+}
+.equal-sign { text-align: center; }
+.equal-sign.state-correct   { color: var(--success); }
+.equal-sign.state-incorrect { color: var(--error); }
+.equal-sign.state-invalid,
+.equal-sign.state-ok        { color: var(--warning); }
+.ghost-equal { visibility: hidden; }      /* garde l’emprise → alignement propre */
+
+/* Input & formules */
+.input-wrapper-input,
+.latex-formula {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+}
+.latex-formula {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.latex-formula .mjx-container {
+  display: inline-block;
+  line-height: 1;
+  vertical-align: middle;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Champ input */
+.input-wrapper input {
+  height: calc(var(--wrapper-h) - (1 * var(--wrap-pad-v)) - var(--input-v-gap));
+  align-self: center;
+  line-height: 1.2;
+  padding: 0 14px;
+  flex: 0 1 var(--input-w);
+  width: var(--input-w);
+  min-width: 100px;
+  font-size: 16px;
+  border: 2px solid #e0e5ec;
+  border-radius: 8px;
+  background: #f8fafc;
+  transition: border-color .2s, box-shadow .2s, background .2s;
+}
+.input-wrapper input:focus {
+  border-color: var(--accent);
+  background: #fff;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb)/.2);
+}
+.input-error {
+  border-color: var(--error) !important;
+  background: #fdecea !important;
+}
+
+/* Commentaire (badge à droite) */
+.comment {
+  margin-left: auto;
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  text-align:left;
+  padding: 4px 8px;
+  border-radius: 8px;
+  min-width: 0;                 /* peut se contracter */
+  max-height: 100%;             /* reste dans le wrapper */
+  font-size: 12px;
+  font-weight: 500;
+  background: #f8f9fa;
+  align-self: stretch;          /* prend la hauteur du wrapper */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;          /* empêche le retour à la ligne */
+}
+.comment:empty { display:none; }
+.comment.error   { background: rgba(231, 76, 60, .1); color:#e74c3c; }
+.comment.success { background: rgba(46, 204,113,.1); color: #1b4332;  }
+.comment.info    { background: rgba(46, 204,113,.1); color: rgba(0, 200, 0, .9); }
+
+/* Bouton “croix” dans le commentaire */
+.close-button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:20px; height:20px; min-width:20px;
+  border-radius:50%;
+  margin-right:6px;
+  background:#eee;
+  font-size:12px; line-height:1;
+  cursor:pointer;
+  user-select:none;
+  flex-shrink:0;
+}
+.close-button:hover{ background: rgba(255,100,100,0.5); }
+.close-button:focus{
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.close-button svg{ width: 12px; height: 12px; display:block; }
+
+/* ===============================
+   Bouton Correction
+=================================*/
+.bouton-correction{
+  display:flex;
+  justify-content:center;
+  margin:18px 0 6px;
+}
+.btn-correction{
+  display:inline-block;
+  padding:10px 24px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  font-size:16px;
+  font-weight:600;
+  color:#fff;
+  background: var(--accent);
+  box-shadow: 0 2px 4px rgba(0,0,0,.1);
+  transition: background .2s, transform .1s, box-shadow .2s;
+}
+.btn-correction:hover{ background:#6630a0; transform:translateY(-1px); }
+.btn-correction:active{ transform:translateY(0); box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+.btn-correction:focus{ outline:3px solid rgba(var(--accent-rgb)/.35); outline-offset:2px; }
+
+/* ===============================
+   Correction (bloc)
+=================================*/
+.correction-content:empty { display: none; }
+.correction-content{
+  background: var(--accent-pale);
+  border: 1px solid var(--accent-pale-border);
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0,0,0,.08);
+  margin-top: 12px;
+  padding: 14px;
+}
+.correction-content h3{
+  margin: 6px 0 8px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 16px;
+  color: #2c3e50;
+}
+.correction-content .etape{
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .15rem 0;
+}
+.correction-content .etape-egal,
+.correction-content .equal-sign{
+  flex: 0 0 auto;
+  white-space: nowrap;
+  opacity: .9;
+}
+.correction-content .etape-egal.is-hidden{ display: none; }
+.correction-content .etape-expr{
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  text-align: left;
+}
+
+.quiz-ready {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+.quiz-ready-media img {
+  max-width: 180px;
+  height: auto;
+  display: block;
+}
+
+.quiz-ready-text {
+  font-size: 1.1rem;
+  color: #334;
+}
+
+.quiz-ready {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;  /* centre vertical */
+  gap: 1.2rem;
+  text-align: center;
+}
+
+
+#exercice-container:has(.quiz-ready) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

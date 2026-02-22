@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Quiz Euclide</title>
+  <link rel="stylesheet" href="style.css">
+
+  <!-- MathJax (si tu veux du LaTeX dans les énoncés) -->
+  <script>
+    MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)'], ['$', '$']],
+        displayMath: [['$$', '$$']]
+      }
+    };
+  </script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+  <!-- Confetti (optionnel) -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+</head>
+<body>
+
+  <!-- Conteneur du quiz -->
+  <div id="app"></div>
+
+  <!-- Scripts de ton projet -->
+  <script src="Utils.js"></script>
+  <script src="Nombre.js"></script>
+  <script src="Grandeur.js"></script>
+  <script src="Expression.js"></script>
+  <script src="Somme.js"></script>
+  <script src="Produit.js"></script>
+  <script src="ObjetString.js"></script>
+  <script src="Grader.js"></script>
+  <script src="Exercice.js"></script>
+  <script src="Niveau.js"></script>
+  <script src="Enonce.js"></script>
+    <script src="Animation.js"></script>
+  <script src="AnimationFinale.js"></script>
+  <script src="Quiz.js"></script>
+
+  <script>
+  window.addEventListener('load', () => {
+    const SEED_BASE = "quiz-euclide-2025";
+
+    // Création du sélecteur de niveau (via Niveau.js)
+    const niv = new Niveau({
+      levels: { 
+        facile: 'Facile', 
+        moyen: 'Moyen', 
+        avance: 'Avancé' 
+      }, 
+      defaultKey: 'facile'
+    });
+
+function buildEuclide(zone, index) {
+  const difficulte = niv.getKey(); // "facile" | "moyen" | "avance"
+  const modesParNiveau = {
+    facile: [1,2,4,5,12,13,14,15],
+    moyen:  [3,6,7,8,9,10,16,17,18,19],
+    avance: Array.from({length:19}, (_,i)=>i+1)
+  };
+
+  const inst = new EnonceCompositeNature({
+    niveau: difficulte,
+    allowedModes: modesParNiveau[difficulte],
+    sharedOptions: { affichageAvecLettre: "" }
+  });
+
+  return inst.buildExercise(zone, index);
+}
+
+
+
+
+const quiz = new Quiz({
+  mount: '#app',
+  nbQuestions: 10,
+  buildExercise: buildEuclide,
+  texts: {
+    ready: "Choisissez votre niveau avant de commencer",
+    readyImage: null
+  }
+});
+
+    // Monter le sélecteur de niveau dans le slot du quiz
+    niv.renderInto(quiz.getLevelSlot());
+
+    // Afficher l'écran d'accueil
+    quiz.start();
+  });
+  </script>
+  
+</body>
+</html>

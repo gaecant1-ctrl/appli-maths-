@@ -202,7 +202,6 @@ _rulesForLevel(level){
   if(level === 'facile'){
     return {
       ...base,
-      allowNegativeAtoms: true,
       maxDepth: 1
     };
   }
@@ -210,15 +209,13 @@ _rulesForLevel(level){
   if(level === 'moyen'){
     return {
       ...base,
-      allowNegativeAtoms: true,
       maxDepth: 2
     };
   }
 
-  if(level === 'difficile'){
+  if(level === 'avance'){
     return {
       ...base,
-      allowNegativeAtoms: true,
       maxDepth: 3
     };
   }
@@ -361,13 +358,15 @@ _buildWithOps(k){
 
 _opsFromNiveau(){
 
-  if(this.niveau === 'faible') return 1;
+  if(this.niveau === 'facile'){
+    return 1;
+  }
 
   if(this.niveau === 'moyen'){
     return this.rng.int(2,3);
   }
 
-  if(this.niveau === 'avance' || this.niveau === 'difficile'){
+  if(this.niveau === 'avance'){
     return this.rng.int(4,5);
   }
 
